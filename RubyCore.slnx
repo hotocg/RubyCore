@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="RubyCore.Test/RubyCore.Test.csproj" />
+  <Project Path="RubyCore/RubyCore.csproj" />
+</Solution>
