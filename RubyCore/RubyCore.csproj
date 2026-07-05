@@ -6,6 +6,25 @@
     <LangVersion>latest</LangVersion>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>HTCG.$(MSBuildProjectName)</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Deva</Authors>
+    <Company>HTCG</Company>
+    <Description>Good Good Study, Day Day Up!</Description>
+    <Copyright>Copyright © 2025</Copyright>
+    <RepositoryUrl>https://github.com/hotocg/RubyCore.git</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/hotocg/RubyCore</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>ruby; mri; c-api; interop; embedding; native; csharp; dotnet; netcore; scripting; automation</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  
 </Project>
