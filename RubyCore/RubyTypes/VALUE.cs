@@ -7,7 +7,7 @@ using System.Xml.Linq;
 
 namespace RubyCore
 {
-    public  struct VALUE
+    public struct VALUE : IEquatable<VALUE>
     {
         public IntPtr Pointer = IntPtr.Zero;
         public bool IsNull => Pointer == IntPtr.Zero;
@@ -30,10 +30,14 @@ namespace RubyCore
 
         //}
 
-        public static bool operator ==(VALUE a, VALUE b) => a.Pointer == b.Pointer;
-        public static bool operator !=(VALUE a, VALUE b) => a.Pointer != b.Pointer;
-
         public static implicit operator VALUE(int val) => new(val);
+        public static bool operator ==(VALUE left, VALUE right) => left.Equals(right);
+        public static bool operator !=(VALUE left, VALUE right) => !left.Equals(right);
 
+        public bool Equals(VALUE other) => Pointer == other.Pointer;
+
+        public override bool Equals(object obj) => obj is VALUE other && Equals(other);
+
+        public override int GetHashCode() => Pointer.GetHashCode();
     }
 }

@@ -37,10 +37,10 @@ namespace RubyCore.Test
                 var HostDir = @"C:\Program Files\SketchUp\SketchUp 2018";
                 var DllPath = Path.Combine(HostDir, "x64-msvcrt-ruby220.dll");
 
-                HostDir = @"C:\Program Files\SketchUp\SketchUp 2023";
-                DllPath = Path.Combine(HostDir, "x64-msvcrt-ruby270.dll");
+                //HostDir = @"C:\Program Files\SketchUp\SketchUp 2023";
+                //DllPath = Path.Combine(HostDir, "x64-msvcrt-ruby270.dll");
 
-                DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-msvcrt-ruby220.dll";
+                //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-msvcrt-ruby220.dll";
                 //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-msvcrt-ruby260.dll";
                 //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-msvcrt-ruby270.dll";
                 //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-ucrt-ruby320.dll";

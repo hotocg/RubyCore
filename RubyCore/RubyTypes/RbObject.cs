@@ -63,6 +63,7 @@ namespace RubyCore
             if (obj is null) return false;
 
             var rbObj = obj as RbObject;
+            if (rbObj is null) return false;
             if (Pointer == rbObj.Pointer) return true;
 
             return false;
