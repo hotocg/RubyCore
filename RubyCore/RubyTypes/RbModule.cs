@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -9,7 +10,7 @@ namespace RubyCore
     public class RbModule : RbObject
     {
         // 用于防止 Delegate 被 GC 回收导致崩溃
-        private static readonly List<Delegate> _delegateKeepAlive = new List<Delegate>();
+        private readonly List<Delegate> _delegateKeepAlive = new List<Delegate>();
 
         internal RbModule(VALUE refVal) : base(refVal) { }
 
@@ -24,7 +25,7 @@ namespace RubyCore
         private void RegisterFunc(string name, Delegate del, int arity)
         {
             _delegateKeepAlive.Add(del);
-            Runtime.rb_define_module_function(this.Ref, name.ToLower(), del, arity);
+            Runtime.rb_define_module_function(this.Ref, name, del, arity);
         }
 
         //public void DefineFunction(string name, Delegate func)
@@ -97,6 +98,7 @@ namespace RubyCore
         /// <param name="argv">参数数组的指针</param>
         /// <param name="self">接收者对象（模块自身）</param>
         /// <returns></returns>
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate VALUE VarArgDelegate(int argc, IntPtr argv, VALUE self);
 
         /// <summary>

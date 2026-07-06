@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -29,6 +30,10 @@ namespace RubyCore
             this.Pointer = refVal.Pointer;
         }
 
+        public RbObject(ID refVal)
+        {
+            this.Pointer = refVal.Pointer;
+        }
 
         public override string ToString()
         {
@@ -70,6 +75,11 @@ namespace RubyCore
         }
         #endregion
 
+        public RbObject Invoke(string methodName, params RbObject[] args)
+        {
+            var methodId = Runtime.rb_intern(methodName);
+            return Runtime.rb_funcallv(this.Ref, methodId, args.Select(x => x.Ref).ToArray()).Obj;
+        }
 
     }
 }

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace RubyCore
@@ -184,11 +185,29 @@ namespace RubyCore
         #endregion
 
         #region 调用
-        //internal static VALUE rb_funcall(VALUE recv, string mid, int argc, params VALUE[] argv)
-        //{
-        //    var methodId = RbEngine.rb_intern(mid);
-        //    return RbEngine.rb_funcallv(recv, methodId, argc, argv);
-        //}
+        /// <summary>
+        /// 查找或创建指定名称的符号
+        /// </summary>
+        internal static ID rb_intern(string name) => Delegates.rb_intern(name);
+        /// <summary>
+        /// 调用对象方法
+        /// </summary>
+        internal static VALUE rb_funcall(VALUE recv, ID mid, params VALUE[] argv) => Delegates.rb_funcall(recv, mid, argv.Length, argv);
+        /// <summary>
+        /// 使用参数数组调用对象方法
+        /// </summary>
+        internal static VALUE rb_funcallv(VALUE recv, ID mid, params VALUE[] argv)
+        {
+            if (argv is null || argv.Length == 0)
+            {
+                return Delegates.rb_funcallv(recv, mid, 0, IntPtr.Zero);
+            }
+
+            fixed (VALUE* argvPtr = argv)
+            {
+                return Delegates.rb_funcallv(recv, mid, argv.Length, (IntPtr)argvPtr);
+            }
+        }
         #endregion
 
         #region 异常
@@ -250,6 +269,9 @@ namespace RubyCore
                 rb_obj_class = WindowsLoader.GetFuncByName<Delegate_rb_obj_class>(nameof(rb_obj_class), _ApiDll);
                 rb_obj_classname = WindowsLoader.GetFuncByName<Delegate_rb_obj_classname>(nameof(rb_obj_classname), _ApiDll);
 
+                rb_intern = WindowsLoader.GetFuncByName<Delegate_rb_intern>(nameof(rb_intern), _ApiDll);
+                rb_funcall = WindowsLoader.GetFuncByName<Delegate_rb_funcall>(nameof(rb_funcall), _ApiDll);
+                rb_funcallv = WindowsLoader.GetFuncByName<Delegate_rb_funcallv>(nameof(rb_funcallv), _ApiDll);
 
                 rb_string_value_cstr = WindowsLoader.GetFuncByName<Delegate_rb_string_value_cstr>(nameof(rb_string_value_cstr), _ApiDll);
 
@@ -309,6 +331,12 @@ namespace RubyCore
             internal delegate string Delegate_rb_obj_classname(VALUE obj);
             internal static Delegate_rb_obj_classname rb_obj_classname;
 
+            internal delegate ID Delegate_rb_intern(string name);
+            internal static Delegate_rb_intern rb_intern;
+            internal delegate VALUE Delegate_rb_funcall(VALUE recv, ID mid, int argc, params VALUE[] argv);
+            internal static Delegate_rb_funcall rb_funcall;
+            internal delegate VALUE Delegate_rb_funcallv(VALUE recv, ID mid, int argc, IntPtr argv);
+            internal static Delegate_rb_funcallv rb_funcallv;
 
             internal delegate IntPtr Delegate_rb_string_value_cstr(ref VALUE str);
             internal static Delegate_rb_string_value_cstr rb_string_value_cstr;
