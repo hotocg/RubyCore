@@ -83,6 +83,7 @@ namespace RubyCore.Test
                     Console.WriteLine($"Invoke CLR 捕获: {ex.Message}");
                 }
 
+                Console.WriteLine(new RbInt(100) + new RbInt(200));
                 //Console.WriteLine($"Invoke: {module.Invoke("methods", new RbString(":test2"))}");
                 //Console.WriteLine($"Invoke: {new RbString("123").Invoke("class")}");
                 //Console.WriteLine($"Invoke: {module.Invoke("test22")}");

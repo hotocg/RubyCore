@@ -107,22 +107,54 @@ namespace RubyCore
         #region Api
 
         #region 引擎
+        /// <summary>
+        /// 初始化 Ruby 运行时参数
+        /// </summary>
         internal static void ruby_sysinit(ref int argc, ref IntPtr argv) => Delegates.ruby_sysinit(ref argc, ref argv);
 
+        /// <summary>
+        /// 设置 Ruby 运行时
+        /// </summary>
         internal static void ruby_setup() => Delegates.ruby_setup();
+
+        /// <summary>
+        /// 初始化 Ruby 运行时
+        /// </summary>
         internal static void ruby_init() => Delegates.ruby_init();
+
         /// <summary>
         /// 初始化标准库加载路径
         /// </summary>
         internal static void ruby_init_loadpath() => Delegates.ruby_init_loadpath();
+
+        /// <summary>
+        /// 结束 Ruby 运行时
+        /// </summary>
         internal static void ruby_finalize() => Delegates.ruby_finalize();
 
+        /// <summary>
+        /// 输出 Ruby 版本信息
+        /// </summary>
         internal static void ruby_show_version() => Delegates.ruby_show_version();
-        
+
+        /// <summary>
+        /// 执行 Ruby 脚本
+        /// </summary>
         internal static VALUE rb_eval_string(StrPtr str) => Delegates.rb_eval_string(str);
+
+        /// <summary>
+        /// 以保护模式执行 Ruby 脚本
+        /// </summary>
         internal static VALUE rb_eval_string_protect(StrPtr str, out int state) => Delegates.rb_eval_string_protect(str, out state);
 
+        /// <summary>
+        /// 调用 Ruby 的 p 输出对象
+        /// </summary>
         internal static void rb_p(VALUE obj) => Delegates.rb_p(obj);
+
+        /// <summary>
+        /// 向 Ruby IO 写入多行输出
+        /// </summary>
         internal static void rb_io_puts(int argc, IntPtr[] argv, VALUE io) => Delegates.rb_io_puts(argc, argv, io);
         
         #endregion
@@ -131,8 +163,8 @@ namespace RubyCore
         /// <summary>
         /// 定义模块
         /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
+        /// <param name="name">模块名称</param>
+        /// <returns>模块对象</returns>
         internal static VALUE rb_define_module(string name) => Delegates.rb_define_module(name);
 
         /// <summary>
@@ -150,37 +182,78 @@ namespace RubyCore
         /// <summary>
         /// Ruby 对象转字符串
         /// </summary>
-        /// <param name="obj"></param>
-        /// <returns></returns>
         internal static VALUE rb_obj_as_string(VALUE obj) => Delegates.rb_obj_as_string(obj);
+
         /// <summary>
         /// 获取对象类别
         /// </summary>
-        /// <param name="obj"></param>
-        /// <returns></returns>
         internal static VALUE rb_obj_class(VALUE obj) => Delegates.rb_obj_class(obj);
         //internal static string rb_obj_classname(VALUE obj) => Delegates.rb_obj_classname(obj);
 
         /// <summary>
+        /// 获取 Ruby 对象哈希值
+        /// </summary>
+        internal static VALUE rb_hash(VALUE obj) => Delegates.rb_hash(obj);
+
+        #endregion
+
+        #region 字符串
+        /// <summary>
         /// Ruby 字符串对象转 C 字符串
         /// </summary>
-        /// <param name="str"></param>
-        /// <returns></returns>
         internal static IntPtr rb_string_value_cstr(ref VALUE str) => Delegates.rb_string_value_cstr(ref str);
 
+        /// <summary>
+        /// 创建 Ruby 字符串
+        /// </summary>
         internal static VALUE rb_str_new_cstr(string str) => Delegates.rb_str_new_cstr(new(str));
+
+        /// <summary>
+        /// 创建 UTF-8 Ruby 字符串
+        /// </summary>
         internal static VALUE rb_utf8_str_new_cstr(string str) => Delegates.rb_utf8_str_new_cstr(new(str));
-        
 
-        internal static VALUE rb_hash(VALUE obj) => Delegates.rb_hash(obj);
-        internal static nint rb_num2int(VALUE num) => Delegates.rb_num2int(num);
+        #endregion
 
+        #region 数值
+        /// <summary>
+        /// Ruby 数值转 32 位整数
+        /// </summary>
+        internal static int rb_num2int(VALUE num) => Delegates.rb_num2int(num);
+
+        /// <summary>
+        /// Ruby 数值转 64 位整数
+        /// </summary>
+        internal static long rb_num2ll(VALUE num) => Delegates.rb_num2ll(num);
+
+        /// <summary>
+        /// Ruby 数值转双精度浮点数
+        /// </summary>
+        internal static double rb_num2dbl(VALUE num) => Delegates.rb_num2dbl(num);
+
+        /// <summary>
+        /// 32 位整数转 Ruby 整数
+        /// </summary>
+        internal static VALUE rb_int2inum(int num) => Delegates.rb_int2inum(num);
+
+        /// <summary>
+        /// 64 位整数转 Ruby 整数
+        /// </summary>
+        internal static VALUE rb_ll2inum(long num) => Delegates.rb_ll2inum(num);
+
+        /// <summary>
+        /// 创建 Ruby 浮点数
+        /// </summary>
+        internal static VALUE rb_float_new(double num) => Delegates.rb_float_new(num);
+
+        #endregion
+
+        #region 全局变量
         /// <summary>
         /// 获取全局变量
         /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
         internal static VALUE rb_gv_get(string name) => Delegates.rb_gv_get(name);
+
         /// <summary>
         /// 设置全局变量
         /// </summary>
@@ -193,10 +266,12 @@ namespace RubyCore
         /// 查找或创建指定名称的符号
         /// </summary>
         internal static ID rb_intern(string name) => Delegates.rb_intern(name);
+
         /// <summary>
         /// 调用对象方法
         /// </summary>
         internal static VALUE rb_funcall(VALUE recv, ID mid, params VALUE[] argv) => Delegates.rb_funcall(recv, mid, argv.Length, argv);
+
         /// <summary>
         /// 使用参数数组调用对象方法
         /// </summary>
@@ -218,12 +293,11 @@ namespace RubyCore
         /// <summary>
         /// 获取异常信息
         /// </summary>
-        /// <returns></returns>
         internal static VALUE rb_errinfo() => Delegates.rb_errinfo();
+
         /// <summary>
         /// 设置异常信息
         /// </summary>
-        /// <param name="err"></param>
         internal static void rb_set_errinfo(VALUE err) => Delegates.rb_set_errinfo(err);
 
         /// <summary>
@@ -254,8 +328,6 @@ namespace RubyCore
         /// <summary>
         /// 获取类名
         /// </summary>
-        /// <param name="obj"></param>
-        /// <returns></returns>
         internal static VALUE rb_class_name(VALUE obj) => Delegates.rb_class_name(obj);
 
         #endregion
@@ -273,59 +345,75 @@ namespace RubyCore
                     throw new FileNotFoundException($"Api Dll 不存在: {_ApiDll}");
                 }
 
-
+                #region 引擎
                 ruby_sysinit = WindowsLoader.GetFuncByName<Delegate_ruby_sysinit>(nameof(ruby_sysinit), _ApiDll);
                 ruby_setup = WindowsLoader.GetFuncByName<Delegate_ruby_setup>(nameof(ruby_setup), _ApiDll);
                 ruby_init = WindowsLoader.GetFuncByName<Delegate_ruby_init>(nameof(ruby_init), _ApiDll);
                 ruby_init_loadpath = WindowsLoader.GetFuncByName<Delegate_ruby_init_loadpath>(nameof(ruby_init_loadpath), _ApiDll);
                 ruby_finalize = WindowsLoader.GetFuncByName<Delegate_ruby_finalize>(nameof(ruby_finalize), _ApiDll);
-
                 ruby_show_version = WindowsLoader.GetFuncByName<Delegate_ruby_show_version>(nameof(ruby_show_version), _ApiDll);
-                
                 rb_eval_string = WindowsLoader.GetFuncByName<Delegate_rb_eval_string>(nameof(rb_eval_string), _ApiDll);
                 rb_eval_string_protect = WindowsLoader.GetFuncByName<Delegate_rb_eval_string_protect>(nameof(rb_eval_string_protect), _ApiDll);
                 rb_p = WindowsLoader.GetFuncByName<Delegate_rb_p>(nameof(rb_p), _ApiDll);
                 rb_io_puts = WindowsLoader.GetFuncByName<Delegate_rb_io_puts>(nameof(rb_io_puts), _ApiDll);
-                
+                #endregion
 
+                #region 模块
                 rb_define_module = WindowsLoader.GetFuncByName<Delegate_rb_define_module>(nameof(rb_define_module), _ApiDll);
                 rb_define_module_function = WindowsLoader.GetFuncByName<Delegate_rb_define_module_function>(nameof(rb_define_module_function), _ApiDll);
+                #endregion
 
-
+                #region 对象
                 rb_obj_as_string = WindowsLoader.GetFuncByName<Delegate_rb_obj_as_string>(nameof(rb_obj_as_string), _ApiDll);
                 rb_obj_class = WindowsLoader.GetFuncByName<Delegate_rb_obj_class>(nameof(rb_obj_class), _ApiDll);
                 rb_obj_classname = WindowsLoader.GetFuncByName<Delegate_rb_obj_classname>(nameof(rb_obj_classname), _ApiDll);
+                rb_hash = WindowsLoader.GetFuncByName<Delegate_rb_hash>(nameof(rb_hash), _ApiDll);
+                #endregion
 
+                #region 字符串
+                rb_string_value_cstr = WindowsLoader.GetFuncByName<Delegate_rb_string_value_cstr>(nameof(rb_string_value_cstr), _ApiDll);
+                rb_str_new_cstr = WindowsLoader.GetFuncByName<Delegate_rb_str_new_cstr>(nameof(rb_str_new_cstr), _ApiDll);
+                rb_utf8_str_new_cstr = WindowsLoader.GetFuncByName<Delegate_rb_utf8_str_new_cstr>(nameof(rb_utf8_str_new_cstr), _ApiDll);
+                #endregion
+
+                #region 数值
+                rb_num2int = WindowsLoader.GetFuncByName<Delegate_rb_num2int>(nameof(rb_num2int), _ApiDll);
+                rb_num2ll = WindowsLoader.GetFuncByName<Delegate_rb_num2ll>(nameof(rb_num2ll), _ApiDll);
+                rb_num2dbl = WindowsLoader.GetFuncByName<Delegate_rb_num2dbl>(nameof(rb_num2dbl), _ApiDll);
+                rb_int2inum = WindowsLoader.GetFuncByName<Delegate_rb_int2inum>(nameof(rb_int2inum), _ApiDll);
+                rb_ll2inum = WindowsLoader.GetFuncByName<Delegate_rb_ll2inum>(nameof(rb_ll2inum), _ApiDll);
+                rb_float_new = WindowsLoader.GetFuncByName<Delegate_rb_float_new>(nameof(rb_float_new), _ApiDll);
+                #endregion
+
+                #region 全局变量
+                rb_gv_get = WindowsLoader.GetFuncByName<Delegate_rb_gv_get>(nameof(rb_gv_get), _ApiDll);
+                rb_gv_set = WindowsLoader.GetFuncByName<Delegate_rb_gv_set>(nameof(rb_gv_set), _ApiDll);
+                #endregion
+
+                #region 调用
                 rb_intern = WindowsLoader.GetFuncByName<Delegate_rb_intern>(nameof(rb_intern), _ApiDll);
                 rb_funcall = WindowsLoader.GetFuncByName<Delegate_rb_funcall>(nameof(rb_funcall), _ApiDll);
                 rb_funcallv = WindowsLoader.GetFuncByName<Delegate_rb_funcallv>(nameof(rb_funcallv), _ApiDll);
+                #endregion
 
-                rb_string_value_cstr = WindowsLoader.GetFuncByName<Delegate_rb_string_value_cstr>(nameof(rb_string_value_cstr), _ApiDll);
-
-                rb_str_new_cstr = WindowsLoader.GetFuncByName<Delegate_rb_str_new_cstr>(nameof(rb_str_new_cstr), _ApiDll);
-                rb_utf8_str_new_cstr = WindowsLoader.GetFuncByName<Delegate_rb_utf8_str_new_cstr>(nameof(rb_utf8_str_new_cstr), _ApiDll);
-
-                rb_hash = WindowsLoader.GetFuncByName<Delegate_rb_hash>(nameof(rb_hash), _ApiDll);
-                rb_num2int = WindowsLoader.GetFuncByName<Delegate_rb_num2int>(nameof(rb_num2int), _ApiDll);
-
-                rb_gv_get = WindowsLoader.GetFuncByName<Delegate_rb_gv_get>(nameof(rb_gv_get), _ApiDll);
-                rb_gv_set = WindowsLoader.GetFuncByName<Delegate_rb_gv_set>(nameof(rb_gv_set), _ApiDll);
-
-
-                rb_class_name = WindowsLoader.GetFuncByName<Delegate_rb_class_name>(nameof(rb_class_name), _ApiDll);
-
-
+                #region 异常
                 rb_errinfo = WindowsLoader.GetFuncByName<Delegate_rb_errinfo>(nameof(rb_errinfo), _ApiDll);
                 rb_set_errinfo = WindowsLoader.GetFuncByName<Delegate_rb_set_errinfo>(nameof(rb_set_errinfo), _ApiDll);
+                #endregion
 
+                #region 数组
                 rb_ary_new = WindowsLoader.GetFuncByName<Delegate_rb_ary_new>(nameof(rb_ary_new), _ApiDll);
                 rb_ary_push = WindowsLoader.GetFuncByName<Delegate_rb_ary_push>(nameof(rb_ary_push), _ApiDll);
+                #endregion
 
+                #region 类
+                rb_class_name = WindowsLoader.GetFuncByName<Delegate_rb_class_name>(nameof(rb_class_name), _ApiDll);
+                #endregion
             }
-            
+
+            #region 引擎
             internal delegate void Delegate_ruby_sysinit(ref int argc, ref IntPtr argv);
             internal static Delegate_ruby_sysinit ruby_sysinit;
-
             internal delegate void Delegate_ruby_setup();
             internal static Delegate_ruby_setup ruby_setup;
             internal delegate void Delegate_ruby_init();
@@ -337,7 +425,6 @@ namespace RubyCore
 
             internal delegate void Delegate_ruby_show_version();
             internal static Delegate_ruby_show_version ruby_show_version;
-            
             internal delegate VALUE Delegate_rb_eval_string(StrPtr str);
             internal static Delegate_rb_eval_string rb_eval_string;
             internal delegate VALUE Delegate_rb_eval_string_protect(StrPtr str, out int state);
@@ -346,63 +433,84 @@ namespace RubyCore
             internal static Delegate_rb_p rb_p;
             internal delegate VALUE Delegate_rb_io_puts(int argc, IntPtr[] argv, VALUE io);
             internal static Delegate_rb_io_puts rb_io_puts;
-            
+            #endregion
 
+            #region 模块
             internal delegate VALUE Delegate_rb_define_module(string name);
             internal static Delegate_rb_define_module rb_define_module;
-
             internal delegate void Delegate_rb_define_module_function(VALUE klass, string mid, Delegate func, int arity);
             internal static Delegate_rb_define_module_function rb_define_module_function;
+            #endregion
 
-
+            #region 对象
             internal delegate VALUE Delegate_rb_obj_as_string(VALUE obj);
             internal static Delegate_rb_obj_as_string rb_obj_as_string;
             internal delegate VALUE Delegate_rb_obj_class(VALUE obj);
             internal static Delegate_rb_obj_class rb_obj_class;
             internal delegate string Delegate_rb_obj_classname(VALUE obj);
             internal static Delegate_rb_obj_classname rb_obj_classname;
+            internal delegate VALUE Delegate_rb_hash(VALUE obj);
+            internal static Delegate_rb_hash rb_hash;
+            #endregion
 
+            #region 字符串
+            internal delegate IntPtr Delegate_rb_string_value_cstr(ref VALUE str);
+            internal static Delegate_rb_string_value_cstr rb_string_value_cstr;
+            internal delegate VALUE Delegate_rb_str_new_cstr(StrPtr str);
+            internal static Delegate_rb_str_new_cstr rb_str_new_cstr;
+            internal delegate VALUE Delegate_rb_utf8_str_new_cstr(StrPtr str);
+            internal static Delegate_rb_utf8_str_new_cstr rb_utf8_str_new_cstr;
+            #endregion
+
+            #region 数值
+            internal delegate int Delegate_rb_num2int(VALUE num);
+            internal static Delegate_rb_num2int rb_num2int;
+            internal delegate long Delegate_rb_num2ll(VALUE num);
+            internal static Delegate_rb_num2ll rb_num2ll;
+            internal delegate double Delegate_rb_num2dbl(VALUE num);
+            internal static Delegate_rb_num2dbl rb_num2dbl;
+            internal delegate VALUE Delegate_rb_int2inum(int num);
+            internal static Delegate_rb_int2inum rb_int2inum;
+            internal delegate VALUE Delegate_rb_ll2inum(long num);
+            internal static Delegate_rb_ll2inum rb_ll2inum;
+            internal delegate VALUE Delegate_rb_float_new(double num);
+            internal static Delegate_rb_float_new rb_float_new;
+            #endregion
+
+            #region 全局变量
+            internal delegate VALUE Delegate_rb_gv_get(string name);
+            internal static Delegate_rb_gv_get rb_gv_get;
+            internal delegate VALUE Delegate_rb_gv_set(string name, VALUE value);
+            internal static Delegate_rb_gv_set rb_gv_set;
+            #endregion
+
+            #region 调用
             internal delegate ID Delegate_rb_intern(string name);
             internal static Delegate_rb_intern rb_intern;
             internal delegate VALUE Delegate_rb_funcall(VALUE recv, ID mid, int argc, params VALUE[] argv);
             internal static Delegate_rb_funcall rb_funcall;
             internal delegate VALUE Delegate_rb_funcallv(VALUE recv, ID mid, int argc, IntPtr argv);
             internal static Delegate_rb_funcallv rb_funcallv;
+            #endregion
 
-            internal delegate IntPtr Delegate_rb_string_value_cstr(ref VALUE str);
-            internal static Delegate_rb_string_value_cstr rb_string_value_cstr;
-
-            internal delegate VALUE Delegate_rb_str_new_cstr(StrPtr str);
-            internal static Delegate_rb_str_new_cstr rb_str_new_cstr;
-            internal delegate VALUE Delegate_rb_utf8_str_new_cstr(StrPtr str);
-            internal static Delegate_rb_utf8_str_new_cstr rb_utf8_str_new_cstr;
-            
-
-            internal delegate VALUE Delegate_rb_hash(VALUE obj);
-            internal static Delegate_rb_hash rb_hash;
-
-            internal delegate nint Delegate_rb_num2int(VALUE num);
-            internal static Delegate_rb_num2int rb_num2int;
-
-            internal delegate VALUE Delegate_rb_gv_get(string name);
-            internal static Delegate_rb_gv_get rb_gv_get;
-            internal delegate VALUE Delegate_rb_gv_set(string name, VALUE value);
-            internal static Delegate_rb_gv_set rb_gv_set;
-            
-
-            internal delegate VALUE Delegate_rb_class_name(VALUE obj);
-            internal static Delegate_rb_class_name rb_class_name;
-
-
+            #region 异常
             internal delegate VALUE Delegate_rb_errinfo();
             internal static Delegate_rb_errinfo rb_errinfo;
             internal delegate void Delegate_rb_set_errinfo(VALUE err);
             internal static Delegate_rb_set_errinfo rb_set_errinfo;
+            #endregion
 
+            #region 数组
             internal delegate VALUE Delegate_rb_ary_new();
             internal static Delegate_rb_ary_new rb_ary_new;
             internal delegate VALUE Delegate_rb_ary_push(VALUE array, VALUE value);
             internal static Delegate_rb_ary_push rb_ary_push;
+            #endregion
+
+            #region 类
+            internal delegate VALUE Delegate_rb_class_name(VALUE obj);
+            internal static Delegate_rb_class_name rb_class_name;
+            #endregion
 
         }
 
