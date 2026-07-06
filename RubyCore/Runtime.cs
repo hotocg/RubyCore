@@ -181,6 +181,10 @@ namespace RubyCore
         /// <param name="name"></param>
         /// <returns></returns>
         internal static VALUE rb_gv_get(string name) => Delegates.rb_gv_get(name);
+        /// <summary>
+        /// 设置全局变量
+        /// </summary>
+        internal static VALUE rb_gv_set(string name, VALUE value) => Delegates.rb_gv_set(name, value);
 
         #endregion
 
@@ -221,6 +225,29 @@ namespace RubyCore
         /// </summary>
         /// <param name="err"></param>
         internal static void rb_set_errinfo(VALUE err) => Delegates.rb_set_errinfo(err);
+
+        /// <summary>
+        /// 创建 Ruby RuntimeError 异常对象
+        /// </summary>
+        internal static VALUE rb_new_runtime_error(string message)
+        {
+            var exceptionClass = WindowsLoader.GetValueByName("rb_eRuntimeError", _ApiDll);
+            var messageValue = rb_utf8_str_new_cstr(message ?? string.Empty);
+            return rb_funcallv(exceptionClass, rb_intern("new"), messageValue);
+        }
+
+        #endregion
+
+        #region 数组
+        /// <summary>
+        /// 创建 Ruby 数组
+        /// </summary>
+        internal static VALUE rb_ary_new() => Delegates.rb_ary_new();
+
+        /// <summary>
+        /// 向 Ruby 数组追加元素
+        /// </summary>
+        internal static VALUE rb_ary_push(VALUE array, VALUE value) => Delegates.rb_ary_push(array, value);
         #endregion
 
         #region 类
@@ -282,6 +309,7 @@ namespace RubyCore
                 rb_num2int = WindowsLoader.GetFuncByName<Delegate_rb_num2int>(nameof(rb_num2int), _ApiDll);
 
                 rb_gv_get = WindowsLoader.GetFuncByName<Delegate_rb_gv_get>(nameof(rb_gv_get), _ApiDll);
+                rb_gv_set = WindowsLoader.GetFuncByName<Delegate_rb_gv_set>(nameof(rb_gv_set), _ApiDll);
 
 
                 rb_class_name = WindowsLoader.GetFuncByName<Delegate_rb_class_name>(nameof(rb_class_name), _ApiDll);
@@ -289,6 +317,9 @@ namespace RubyCore
 
                 rb_errinfo = WindowsLoader.GetFuncByName<Delegate_rb_errinfo>(nameof(rb_errinfo), _ApiDll);
                 rb_set_errinfo = WindowsLoader.GetFuncByName<Delegate_rb_set_errinfo>(nameof(rb_set_errinfo), _ApiDll);
+
+                rb_ary_new = WindowsLoader.GetFuncByName<Delegate_rb_ary_new>(nameof(rb_ary_new), _ApiDll);
+                rb_ary_push = WindowsLoader.GetFuncByName<Delegate_rb_ary_push>(nameof(rb_ary_push), _ApiDll);
 
             }
             
@@ -355,6 +386,8 @@ namespace RubyCore
 
             internal delegate VALUE Delegate_rb_gv_get(string name);
             internal static Delegate_rb_gv_get rb_gv_get;
+            internal delegate VALUE Delegate_rb_gv_set(string name, VALUE value);
+            internal static Delegate_rb_gv_set rb_gv_set;
             
 
             internal delegate VALUE Delegate_rb_class_name(VALUE obj);
@@ -365,6 +398,11 @@ namespace RubyCore
             internal static Delegate_rb_errinfo rb_errinfo;
             internal delegate void Delegate_rb_set_errinfo(VALUE err);
             internal static Delegate_rb_set_errinfo rb_set_errinfo;
+
+            internal delegate VALUE Delegate_rb_ary_new();
+            internal static Delegate_rb_ary_new rb_ary_new;
+            internal delegate VALUE Delegate_rb_ary_push(VALUE array, VALUE value);
+            internal static Delegate_rb_ary_push rb_ary_push;
 
         }
 

@@ -71,6 +71,12 @@ namespace RubyCore
             return Marshal.GetDelegateForFunctionPointer<T>(GetFunction(Load(DllPath), FuncName));
         }
 
+        internal static VALUE GetValueByName(string name, string dllPath)
+        {
+            var address = GetFunction(Load(dllPath), name);
+            return new VALUE(Marshal.ReadIntPtr(address));
+        }
+
         internal void Free(IntPtr hModule) => FreeLibrary(hModule);
 
         internal static IntPtr[] GetAllModules()

@@ -70,10 +70,18 @@ namespace RubyCore.Test
                     {
                         Console.WriteLine($"参数: {arg}");
                     }
+                    throw new Exception("Test CLR Exception!");
                     return new RbString("啊哈哈");
                 });
 
-                Console.WriteLine($"Invoke: {module.Invoke("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
+                try
+                {
+                    Console.WriteLine($"Invoke: {module.Invoke("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Invoke CLR 捕获: {ex.Message}");
+                }
 
                 //Console.WriteLine($"Invoke: {module.Invoke("methods", new RbString(":test2"))}");
                 //Console.WriteLine($"Invoke: {new RbString("123").Invoke("class")}");
@@ -81,39 +89,43 @@ namespace RubyCore.Test
                 //Console.WriteLine($"Invoke: {module.Invoke("test22", RbTypeMap.Qtrue)}");
                 //Console.WriteLine($"Invoke: {module.Invoke("test22", new RbString("123"))}");
 
-                RbEngine.Exec($@"
-module TmpModule
-    def self.Test(show = '123')
-        p show
-    end
-end
-");
+                //RbEngine.Exec($@"
+                //module TmpModule
+                //    def self.Test(show = '123')
+                //        p show
+                //    end
+                //end
+                //");
                 //Console.WriteLine($"Invoke: {RbEngine.Exec("TmpModule").Invoke("Test", new RbString("1"), new RbString("1"))}");
                 //Console.WriteLine($"Invoke: {new RbString("123").Invoke("split", new RbString("1"))}");
                 //Console.WriteLine($"Invoke: {new RbString("123")}");
 
-                return;
+                //return;
                 module.DefineFunction("Test3", Test3);
 
 
                 var testDir = @"E:\临时\待整理";
                 RbEngine.Exec($@"
-                    $LOAD_PATH << '{HostDir}\Tools\RubyStdLib'
-                    $LOAD_PATH << '{HostDir}\Tools\RubyStdLib\platform_specific'
+                    begin
+                        $LOAD_PATH << '{HostDir}\Tools\RubyStdLib'
+                        $LOAD_PATH << '{HostDir}\Tools\RubyStdLib\platform_specific'
                     
-                    puts '{testDir}'
-                    Encoding.default_external = 'UTF-8'
+                        puts '{testDir}'
+                        Encoding.default_external = 'UTF-8'
                     
-                    p Su66Core
-                    #Su66Core.test
-                    #Su66Core.test1 '啊哈哈'
-                    a = Su66Core.test2(678, '蛋炒饭', [1, 2], {{a: 1 }})
-                    b = Su66Core.test3(789, '烧卖', [3, 4], {{b: 2 }})
-                    p ('test2 返回值: '.force_encoding('UTF-8') + a)
-                    p ('test3 返回值: '.force_encoding('UTF-8') + b.to_s)
+                        p Su66Core
+                        #Su66Core.Test
+                        #Su66Core.Test1 '啊哈哈'
+                        a = Su66Core.Test2(678, '蛋炒饭', [1, 2], {{a: 1 }})
+                        b = Su66Core.Test3(789, '烧卖', [3, 4], {{b: 2 }})
+                        p ('test2 返回值: '.force_encoding('UTF-8') + a)
+                        p ('test3 返回值: '.force_encoding('UTF-8') + b.to_s)
                     
-                    #require 'json'
-                    #JSON.generate(b)
+                        #require 'json'
+                        #JSON.generate(b)
+                    rescue => e
+                        p e
+                    end
                 ");
                 Console.WriteLine();
                 Console.WriteLine($"{module} | {module.Class} | {module.GetHashCode()}");
