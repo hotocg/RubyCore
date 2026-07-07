@@ -23,41 +23,18 @@ namespace RubyCore.Test
             }
         }
 
-        public static void Test3(RbObject self, RbObject[] args)
-        {
-            foreach (var arg in args)
-            {
-                Console.WriteLine($"参数 {arg}");
-            }
-        }
 
         static void RubyTest()
         {
             try
             {
-                //Console.WriteLine("Hello, World!");
+                var hostDir = @"C:\Program Files\SketchUp\SketchUp 2018";
+                var dllPath = Path.Combine(hostDir, "x64-msvcrt-ruby220.dll");
 
-                var HostDir = @"C:\Program Files\SketchUp\SketchUp 2018";
-                var DllPath = Path.Combine(HostDir, "x64-msvcrt-ruby220.dll");
+                //RbEngine.Initialize(DllPath);
+                RbEngine.Initialize();
 
-                //HostDir = @"C:\Program Files\SketchUp\SketchUp 2023";
-                //DllPath = Path.Combine(HostDir, "x64-msvcrt-ruby270.dll");
-
-                //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-msvcrt-ruby220.dll";
-                //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-msvcrt-ruby260.dll";
-                //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-msvcrt-ruby270.dll";
-                //DllPath = @"C:\Users\Administrator\Desktop\SU Ruby\Dll\x64-ucrt-ruby320.dll";
-
-                //HostDir = @"C:\Program Files\SketchUp\SketchUp 2025\SketchUp";
-                //DllPath = Path.Combine(HostDir, "x64-ucrt-ruby320.dll");
-                //DllPath = @"C:\Program Files\SketchUp\SketchUp 2025\SketchUp\x64-ucrt-ruby320.dll";
-
-                //Console.WriteLine($"CurrentDirectory: {Environment.CurrentDirectory}");
-                //Environment.CurrentDirectory = Path.GetDirectoryName(DllPath);
-                //Console.WriteLine($"CurrentDirectory: {Environment.CurrentDirectory}");
-
-                RbEngine.Initialize(DllPath);
-
+                // ==================================================
                 dynamic obj = RbEngine.Exec("['a', 'b', 'c']");
                 var first = obj[0];
 
@@ -69,11 +46,8 @@ namespace RubyCore.Test
                 dynamic v = new RbInt(123);
                 Console.WriteLine(v.to_s);
 
-
-                var module = new RbModule("Su66Core");
-                //module.DefineFunction(nameof(Test), new Delegate_Test(Test));
-                //module.DefineFunction(nameof(Test1), new Delegate_Test1(Test1));
-                //module.DefineFunction(nameof(Test2), new Delegate_Test2(Test2));
+                // ==================================================
+                var module = new RbModule("RbCore");
 
                 module.DefineFunction("Test2", (self, args) =>
                 {
@@ -86,65 +60,39 @@ namespace RubyCore.Test
                     return new RbString("啊哈哈");
                 });
 
-                //try
-                //{
-                //    Console.WriteLine($"Invoke: {module.Invoke("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
-                //}
-                //catch (Exception ex)
-                //{
-                //    Console.WriteLine($"Invoke CLR 捕获: {ex.Message}");
-                //}
-
-                var ary = new RbArray(1, 2);
-                foreach (var item in ary)
+                module.DefineFunction("Test3", (self, args) =>
                 {
-                    Console.WriteLine(item);
+                    foreach (var arg in args)
+                    {
+                        Console.WriteLine($"参数 {arg}");
+                    }
+                });
+
+
+                try
+                {
+                    Console.WriteLine($"Invoke: {module.Invoke("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
                 }
-                Console.WriteLine($"Invoke: {((dynamic)module).Test2(1)}");
-
-                //var strary = new RbString("678");
-                //foreach (var item in strary)
-                //{
-                //    Console.WriteLine(item);
-                //}
-                return;
-
-                Console.WriteLine(new RbInt(100) + new RbInt(200));
-                //Console.WriteLine($"Invoke: {module.Invoke("methods", new RbString(":test2"))}");
-                //Console.WriteLine($"Invoke: {new RbString("123").Invoke("class")}");
-                //Console.WriteLine($"Invoke: {module.Invoke("test22")}");
-                //Console.WriteLine($"Invoke: {module.Invoke("test22", RbTypeMap.Qtrue)}");
-                //Console.WriteLine($"Invoke: {module.Invoke("test22", new RbString("123"))}");
-
-                //RbEngine.Exec($@"
-                //module TmpModule
-                //    def self.Test(show = '123')
-                //        p show
-                //    end
-                //end
-                //");
-                //Console.WriteLine($"Invoke: {RbEngine.Exec("TmpModule").Invoke("Test", new RbString("1"), new RbString("1"))}");
-                //Console.WriteLine($"Invoke: {new RbString("123").Invoke("split", new RbString("1"))}");
-                //Console.WriteLine($"Invoke: {new RbString("123")}");
-
-                //return;
-                module.DefineFunction("Test3", Test3);
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Invoke CLR 捕获: {ex.Message}");
+                }
 
 
                 var testDir = @"E:\临时\待整理";
                 RbEngine.Exec($@"
                     begin
-                        $LOAD_PATH << '{HostDir}\Tools\RubyStdLib'
-                        $LOAD_PATH << '{HostDir}\Tools\RubyStdLib\platform_specific'
+                        $LOAD_PATH << '{hostDir}\Tools\RubyStdLib'
+                        $LOAD_PATH << '{hostDir}\Tools\RubyStdLib\platform_specific'
                     
                         puts '{testDir}'
                         Encoding.default_external = 'UTF-8'
                     
-                        p Su66Core
-                        #Su66Core.Test
-                        #Su66Core.Test1 '啊哈哈'
-                        a = Su66Core.Test2(678, '蛋炒饭', [1, 2], {{a: 1 }})
-                        b = Su66Core.Test3(789, '烧卖', [3, 4], {{b: 2 }})
+                        p RbCore
+                        #RbCore.Test
+                        #RbCore.Test1 '啊哈哈'
+                        a = RbCore.Test2(678, '蛋炒饭', [1, 2], {{a: 1 }})
+                        b = RbCore.Test3(789, '烧卖', [3, 4], {{b: 2 }})
                         p ('test2 返回值: '.force_encoding('UTF-8') + a)
                         p ('test3 返回值: '.force_encoding('UTF-8') + b.to_s)
                     
@@ -160,16 +108,7 @@ namespace RubyCore.Test
                 var num = RbEngine.Exec("123");
                 Console.WriteLine($"{num} | {num.Class} | {num.GetHashCode()}");
 
-
-
-                //return;
-
-
-                //var code = "open('RubyTestHello.txt', 'w') {|fp| fp.write(\"Hello, World!\\n\")}";
-                //var code = "1.to_s";
-                //var code = "啊哈哈";
-                //Console.WriteLine(IntPtr.Size);
-
+                // ==================================================
                 var code = $@"
                     #raise ""测试异常""
                     def ht_test
@@ -177,8 +116,8 @@ namespace RubyCore.Test
                         # FuncAPI.CaptureView(true)
                         
                         begin
-                            $LOAD_PATH << '{HostDir}\Tools\RubyStdLib'
-                            $LOAD_PATH << '{HostDir}\Tools\RubyStdLib\platform_specific'
+                            $LOAD_PATH << '{hostDir}\Tools\RubyStdLib'
+                            $LOAD_PATH << '{hostDir}\Tools\RubyStdLib\platform_specific'
                             p $LOAD_PATH
                             #require 'enc/encdb'
                             #require 'enc/trans/transdb'
@@ -217,7 +156,6 @@ namespace RubyCore.Test
 
                 var result = RbEngine.Exec(code);
                 Console.WriteLine($"{result} | {result.Class}");
-
 
             }
             catch (Exception ex)

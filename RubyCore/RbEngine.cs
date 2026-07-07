@@ -127,6 +127,32 @@ namespace RubyCore
         }
 
         /// <summary>
+        /// 加载并执行 Ruby 脚本文件
+        /// </summary>
+        /// <param name="filePath">Ruby 脚本文件路径</param>
+        /// <param name="wrap">是否在匿名模块中加载</param>
+        public static void Load(string filePath, bool wrap = false)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                throw new ArgumentException("Ruby 脚本文件路径不能为空", nameof(filePath));
+            }
+
+            var fullPath = Path.GetFullPath(filePath);
+            if (!File.Exists(fullPath))
+            {
+                throw new FileNotFoundException($"Ruby 脚本文件不存在: {fullPath}", fullPath);
+            }
+
+            Runtime.AutoInit();
+
+            var rubyPath = fullPath.Replace(Path.DirectorySeparatorChar, '/');
+            var rbPath = new RbString(rubyPath);
+            Runtime.rb_load_protect(rbPath.Ref, wrap ? 1 : 0, out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+        }
+
+        /// <summary>
         /// 打印
         /// </summary>
         /// <param name="values"></param>

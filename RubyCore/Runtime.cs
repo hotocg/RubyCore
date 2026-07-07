@@ -70,7 +70,7 @@ namespace RubyCore
             if (IsInitialized) return;
             IsInitialized = true;
 
-            if (_ApiVersion.Major >= 2 && _ApiVersion.Minor >= 7)
+            if (_ApiVersion >= new Version("1.9"))
             {
                 var argc = 0;
                 var argvPtr = IntPtr.Zero;
@@ -146,6 +146,11 @@ namespace RubyCore
         /// 以保护模式执行 Ruby 脚本
         /// </summary>
         internal static VALUE rb_eval_string_protect(StrPtr str, out int state) => Delegates.rb_eval_string_protect(str, out state);
+
+        /// <summary>
+        /// 以保护模式加载 Ruby 脚本文件
+        /// </summary>
+        internal static void rb_load_protect(VALUE filePath, int wrap, out int state) => Delegates.rb_load_protect(filePath, wrap, out state);
 
         /// <summary>
         /// 调用 Ruby 的 p 输出对象
@@ -407,6 +412,7 @@ namespace RubyCore
                 ruby_show_version = WindowsLoader.GetFuncByName<Delegate_ruby_show_version>(nameof(ruby_show_version), _ApiDll);
                 rb_eval_string = WindowsLoader.GetFuncByName<Delegate_rb_eval_string>(nameof(rb_eval_string), _ApiDll);
                 rb_eval_string_protect = WindowsLoader.GetFuncByName<Delegate_rb_eval_string_protect>(nameof(rb_eval_string_protect), _ApiDll);
+                rb_load_protect = WindowsLoader.GetFuncByName<Delegate_rb_load_protect>(nameof(rb_load_protect), _ApiDll);
                 rb_p = WindowsLoader.GetFuncByName<Delegate_rb_p>(nameof(rb_p), _ApiDll);
                 rb_io_puts = WindowsLoader.GetFuncByName<Delegate_rb_io_puts>(nameof(rb_io_puts), _ApiDll);
                 #endregion
@@ -495,6 +501,8 @@ namespace RubyCore
             internal static Delegate_rb_eval_string rb_eval_string;
             internal delegate VALUE Delegate_rb_eval_string_protect(StrPtr str, out int state);
             internal static Delegate_rb_eval_string_protect rb_eval_string_protect;
+            internal delegate void Delegate_rb_load_protect(VALUE filePath, int wrap, out int state);
+            internal static Delegate_rb_load_protect rb_load_protect;
             internal delegate VALUE Delegate_rb_p(VALUE obj);
             internal static Delegate_rb_p rb_p;
             internal delegate VALUE Delegate_rb_io_puts(int argc, IntPtr[] argv, VALUE io);

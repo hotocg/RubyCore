@@ -106,6 +106,34 @@ namespace RubyCore
         {
             return Invoke(args.Select(RbConverter.ToRubyValue).ToArray());
         }
+
+        private static RbObject[] BuildDynamicInvokeArgs(CallInfo callInfo, object[] args)
+        {
+            var namedArgCount = callInfo.ArgumentNames.Count;
+            if (namedArgCount == 0)
+            {
+                return args.Select(RbConverter.ToRubyValue).ToArray();
+            }
+
+            var normalArgCount = args.Length - namedArgCount;
+            var rbArgs = new RbObject[normalArgCount + 1];
+
+            for (int i = 0; i < normalArgCount; i++)
+            {
+                rbArgs[i] = RbConverter.ToRubyValue(args[i]);
+            }
+
+            var namedArgs = new RbHash();
+            for (int i = 0; i < namedArgCount; i++)
+            {
+                var key = new RbSymbol(callInfo.ArgumentNames[i]);
+                var value = RbConverter.ToRubyValue(args[normalArgCount + i]);
+                namedArgs.SetItem(key, value);
+            }
+
+            rbArgs[normalArgCount] = namedArgs;
+            return rbArgs;
+        }
         #endregion
 
         #region 索引访问
@@ -238,13 +266,13 @@ namespace RubyCore
 
         public override bool TryInvoke(InvokeBinder binder, object[] args, out object result)
         {
-            result = Invoke(args);
+            result = Invoke(BuildDynamicInvokeArgs(binder.CallInfo, args));
             return true;
         }
 
         public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result)
         {
-            result = Invoke(binder.Name, args);
+            result = Invoke(binder.Name, BuildDynamicInvokeArgs(binder.CallInfo, args));
             return true;
         }
 
