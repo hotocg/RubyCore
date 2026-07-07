@@ -40,7 +40,7 @@ namespace RubyCore
             if (left is null) throw new ArgumentNullException(nameof(left));
             if (right is null) throw new ArgumentNullException(nameof(right));
 
-            return left.Invoke(operatorName, right);
+            return left.InvokeMethod(operatorName, right);
         }
     }
 }

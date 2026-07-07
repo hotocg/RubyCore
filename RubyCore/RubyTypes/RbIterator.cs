@@ -18,7 +18,7 @@ namespace RubyCore
         {
             if (obj is null) throw new ArgumentNullException(nameof(obj));
 
-            _array = obj.Invoke("to_a");
+            _array = obj.InvokeMethod("to_a");
             _length = _array.Length();
         }
 

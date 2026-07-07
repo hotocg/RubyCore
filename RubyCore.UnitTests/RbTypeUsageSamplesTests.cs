@@ -86,12 +86,12 @@ namespace RubyCore.UnitTests
             Assert.False(user.IsNull);
             Assert.False(user.IsNil);
             Assert.True(user.HasAttr("name"));
-            Assert.Equal("RubyCoreSampleUser", user.Class.Invoke("name").As<string>());
+            Assert.Equal("RubyCoreSampleUser", user.Class.InvokeMethod("name").As<string>());
 
             // 普通属性访问和方法调用：SetAttr/GetAttr/Invoke
             user.SetAttr("name", "Tom");
             Assert.Equal("Tom", user.GetAttr("name").As<string>());
-            Assert.Equal("Hi, Tom", user.Invoke("greet", "Hi").As<string>());
+            Assert.Equal("Hi, Tom", user.InvokeMethod("greet", "Hi").As<string>());
 
             // 索引访问既可以走 GetItem/SetItem，也可以走 C# 索引器
             Assert.Equal("second", user.GetItem(1).As<string>());
@@ -179,7 +179,12 @@ end
 ", System.Text.Encoding.UTF8);
 
                 Assert.True(RbEngine.Require(rubyFeaturePath, moduleName, out var module));
-                Assert.Equal(123, module.Invoke("value").As<int>());
+                Assert.Equal(123, module.InvokeMethod("value").As<int>());
+
+                // 显式声明 out dynamic 时走泛型重载，返回值仍然是可动态调用的 RbObject
+                Assert.False(RbEngine.Require(rubyFeaturePath, moduleName, out dynamic dynamicModule));
+                RbObject dynamicValue = dynamicModule.value();
+                Assert.Equal(123, dynamicValue.As<int>());
 
                 File.WriteAllText(sameNameScriptPath, $@"
 module {sameNameModuleName}
@@ -195,15 +200,15 @@ end
                 var loadPaths = RbEngine.LoadPath.Select(path => path.TrimEnd('/', '\\')).ToArray();
                 Assert.Contains(tempLoadPath, loadPaths);
                 Assert.True(RbEngine.Require(sameNameModuleName, out var sameNameModule));
-                Assert.Equal(456, sameNameModule.Invoke("value").As<int>());
+                Assert.Equal(456, sameNameModule.InvokeMethod("value").As<int>());
 
                 // require 不会返回模块对象；需要模块或类时可以用 GetConstant 走 Ruby C API 获取顶层常量
                 var constant = RbEngine.GetConstant(moduleName);
-                Assert.Equal(123, constant.Invoke("value").As<int>());
+                Assert.Equal(123, constant.InvokeMethod("value").As<int>());
 
                 // Ruby require 对同一个 feature 只加载一次，重复加载会返回 false
                 Assert.False(RbEngine.Require(rubyFeaturePath, moduleName, out module));
-                Assert.Equal(123, module.Invoke("value").As<int>());
+                Assert.Equal(123, module.InvokeMethod("value").As<int>());
 
                 // Require 内部使用 rb_protect 包住 rb_require，因此 Ruby LoadError 会转换成 CLR Exception
                 var exception = Assert.Throws<Exception>(() => RbEngine.Require(moduleName + "_missing_feature"));
@@ -240,14 +245,14 @@ end
 
             // As<T>() 用于把 Ruby VALUE 转回常见 CLR 类型
             Assert.Equal("hello", text.As<string>());
-            Assert.Equal("HELLO", text.Invoke("upcase").As<string>());
-            Assert.Equal("String", text.Class.Invoke("name").As<string>());
+            Assert.Equal("HELLO", text.InvokeMethod("upcase").As<string>());
+            Assert.Equal("String", text.Class.InvokeMethod("name").As<string>());
             Assert.True(truthy.Value);
             Assert.False(falsy.Value);
             Assert.Equal(10, left.Int32);
             Assert.Equal(10L, left.Int64);
             Assert.Equal(3.5, pi.Value, 6);
-            Assert.Equal("name", symbol.Invoke("to_s").As<string>());
+            Assert.Equal("name", symbol.InvokeMethod("to_s").As<string>());
             Assert.False(symbol.Id.IsNull);
 
             // RbNumber 运算符本质是调用 Ruby 的 + - * /，结果仍然是 RbObject
@@ -437,7 +442,7 @@ end
 
             // C# 侧也可以拿回模块对象后继续 Invoke 模块方法
             var moduleFromRuby = RbEngine.Exec(moduleName);
-            Assert.Equal("x|y", moduleFromRuby.Invoke("join_args", "x", "y").As<string>());
+            Assert.Equal("x|y", moduleFromRuby.InvokeMethod("join_args", "x", "y").As<string>());
 
             DefineTemporaryModuleFunction(moduleName + "KeepAlive");
             GC.Collect();
@@ -452,6 +457,51 @@ end
         {
             var module = new RbModule(moduleName);
             module.DefineFunction("ping", (self, args) => new RbString("still alive"));
+        }
+
+        /// <summary>
+        /// RbEngine.DefineGlobalFunction 的全局函数注册
+        /// <para>覆盖 Ruby 直接调用 C# 全局函数、Action 自动返回 nil，以及 CLR 回调异常转 Ruby 异常</para>
+        /// </summary>
+        [RubyRuntimeFact]
+        public void RbEngine_DefineGlobalFunction_ShowRubyCallingClrGlobalFunctionUsage()
+        {
+            EnsureRuby();
+
+            var suffix = Guid.NewGuid().ToString("N");
+            var joinName = "ruby_core_join_" + suffix;
+            var rememberName = "ruby_core_remember_" + suffix;
+            var raiseName = "ruby_core_raise_" + suffix;
+            var lastMessage = string.Empty;
+
+            RbEngine.DefineGlobalFunction(joinName, (self, args) => {
+                var text = string.Join("|", args.Select(arg => arg.ToString()));
+                return new RbString(text);
+            });
+
+            RbEngine.DefineGlobalFunction(rememberName, (self, args) => {
+                lastMessage = args.Length == 0 ? string.Empty : args[0].As<string>();
+            });
+
+            RbEngine.DefineGlobalFunction(raiseName, (self, args) => {
+                throw new InvalidOperationException("global clr error sample");
+            });
+
+            Assert.Equal("a|2|true", RbEngine.Exec($"{joinName}('a', 2, true)").As<string>());
+            Assert.Equal("b|3", RbEngine.GetGlobalFunction(joinName).Invoke("b", 3).As<string>());
+            Assert.Equal("c|4", RbEngine.InvokeGlobalFunction(joinName, "c", 4).As<string>());
+            Assert.True(RbEngine.Exec($"{rememberName}('from global').nil?").As<bool>());
+            Assert.Equal("from global", lastMessage);
+            Assert.Equal("global clr error sample", RbEngine.Exec($@"
+                begin
+                  {raiseName}
+                rescue => e
+                  e.message
+                end
+            ").As<string>());
+
+            var exception = Assert.Throws<Exception>(() => RbEngine.Exec(raiseName));
+            Assert.Contains("global clr error sample", exception.Message);
         }
 
         /// <summary>

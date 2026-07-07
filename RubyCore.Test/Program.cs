@@ -59,6 +59,25 @@ namespace RubyCore.Test
                 Console.WriteLine(((dynamic)Json).generate(new RbArray(1, "2")));
                 //var requireResult = RbEngine.Require("json");
 
+                RbEngine.DefineGlobalFunction("Test", (self, args) =>
+                {
+                    try
+                    {
+                        Console.WriteLine($"[Info] {self} {args.Length}");
+                        foreach (var arg in args)
+                        {
+                            Console.WriteLine($"[参数] {arg}");
+                        }
+                        //throw new Exception("Test CLR Exception!");
+                    }
+                    catch (Exception e)
+                    {
+                        MessageBox.Show($"{e}");
+                    }
+                });
+                RbEngine.Exec("Test(1, '2')");
+                ((dynamic)RbEngine.GetGlobalFunction("Test"))(3, "4");
+
                 return;
                 var module = new RbModule("RbCore");
 
@@ -93,7 +112,7 @@ namespace RubyCore.Test
 
                 try
                 {
-                    Console.WriteLine($"Invoke: {module.Invoke("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
+                    Console.WriteLine($"Invoke: {module.InvokeMethod("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
                 }
                 catch (Exception ex)
                 {

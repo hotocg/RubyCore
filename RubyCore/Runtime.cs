@@ -3,13 +3,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace RubyCore
 {
     public unsafe partial class Runtime
     {
+        #region 配置
+
         /// <summary>
         /// Api DLL 路径
         /// </summary>
@@ -26,6 +27,10 @@ namespace RubyCore
                 return new Version(VerInfo.ProductMajorPart, VerInfo.ProductMinorPart, VerInfo.ProductBuildPart, VerInfo.ProductPrivatePart);
             }
         }
+
+        #endregion
+
+        #region 生命周期
 
         /// <summary>
         /// 判断模块是否存在
@@ -103,6 +108,10 @@ namespace RubyCore
             IsInitialized = false;
         }
 
+        #endregion
+
+        #region 加载路径
+
         /// <summary>
         /// 添加 Ruby 加载路径
         /// </summary>
@@ -130,7 +139,8 @@ namespace RubyCore
         /// </summary>
         internal static VALUE LoadPath => rb_gv_get("$LOAD_PATH");
 
-        // ==================================================
+        #endregion
+
         #region Api
 
         #region 引擎
@@ -227,6 +237,14 @@ namespace RubyCore
         /// <param name="func">函数委托</param>
         /// <param name="arity">参数数量</param>
         internal static void rb_define_module_function(VALUE klass, string mid, Delegate func, int arity) => Delegates.rb_define_module_function(klass, mid, func, arity);
+
+        /// <summary>
+        /// 定义全局函数
+        /// </summary>
+        /// <param name="name">函数名称</param>
+        /// <param name="func">函数委托</param>
+        /// <param name="arity">参数数量</param>
+        internal static void rb_define_global_function(string name, Delegate func, int arity) => Delegates.rb_define_global_function(name, func, arity);
 
         /// <summary>
         /// 获取顶层 Object 类
@@ -371,6 +389,25 @@ namespace RubyCore
                 return Delegates.rb_funcallv(recv, mid, argv.Length, (IntPtr)argvPtr);
             }
         }
+
+        /// <summary>
+        /// 以保护模式调用对象方法
+        /// </summary>
+        internal static VALUE rb_funcallv_protect(VALUE recv, ID mid, VALUE[] argv, out int state)
+        {
+            var data = new FuncallProtectData(recv, mid, argv ?? new VALUE[0]);
+            var handle = GCHandle.Alloc(data);
+
+            try
+            {
+                return rb_protect(FuncallProtectFunc, new VALUE(GCHandle.ToIntPtr(handle)), out state);
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
         #endregion
 
         #region 异常
@@ -467,6 +504,8 @@ namespace RubyCore
 
         #endregion
 
+        #region 保护回调
+
         private static readonly Delegates.Delegate_rb_protect_func RequireProtectFunc = data => {
             var feature = data;
             var featurePtr = rb_string_value_cstr(ref feature);
@@ -478,6 +517,28 @@ namespace RubyCore
             var name = rb_ary_entry(data, 1);
             return rb_const_get(klass, rb_sym2id(name));
         };
+
+        private static readonly Delegates.Delegate_rb_protect_func FuncallProtectFunc = data => {
+            var handle = GCHandle.FromIntPtr(data.Pointer);
+            var callData = (FuncallProtectData)handle.Target;
+            return rb_funcallv(callData.Recv, callData.Mid, callData.Args);
+        };
+
+        private sealed class FuncallProtectData
+        {
+            internal readonly VALUE Recv;
+            internal readonly ID Mid;
+            internal readonly VALUE[] Args;
+
+            internal FuncallProtectData(VALUE recv, ID mid, VALUE[] args)
+            {
+                Recv = recv;
+                Mid = mid;
+                Args = args;
+            }
+        }
+
+        #endregion
 
         #region 初始化委托
         internal static class Delegates
@@ -509,6 +570,7 @@ namespace RubyCore
                 #region 模块
                 rb_define_module = WindowsLoader.GetFuncByName<Delegate_rb_define_module>(nameof(rb_define_module), _ApiDll);
                 rb_define_module_function = WindowsLoader.GetFuncByName<Delegate_rb_define_module_function>(nameof(rb_define_module_function), _ApiDll);
+                rb_define_global_function = WindowsLoader.GetFuncByName<Delegate_rb_define_global_function>(nameof(rb_define_global_function), _ApiDll);
                 rb_const_get = WindowsLoader.GetFuncByName<Delegate_rb_const_get>(nameof(rb_const_get), _ApiDll);
                 #endregion
 
@@ -615,6 +677,8 @@ namespace RubyCore
             internal static Delegate_rb_define_module rb_define_module;
             internal delegate void Delegate_rb_define_module_function(VALUE klass, string mid, Delegate func, int arity);
             internal static Delegate_rb_define_module_function rb_define_module_function;
+            internal delegate void Delegate_rb_define_global_function(string name, Delegate func, int arity);
+            internal static Delegate_rb_define_global_function rb_define_global_function;
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             internal delegate VALUE Delegate_rb_const_get(VALUE klass, ID id);
             internal static Delegate_rb_const_get rb_const_get;

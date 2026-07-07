@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace RubyCore
 {
     public class RbEngine
     {
+        #region 配置
+
         /// <summary>
         /// <inheritdoc cref="Runtime._ApiDll"/>
         /// </summary>
@@ -75,6 +75,10 @@ namespace RubyCore
         /// </summary>
         public static Version ApiVersion => Runtime._ApiVersion;
 
+        #endregion
+
+        #region 生命周期
+
         /// <summary>
         /// <inheritdoc cref="Runtime.Initialize"/>
         /// </summary>
@@ -110,7 +114,10 @@ namespace RubyCore
             ");
         }
 
-        #region 常用方法
+        #endregion
+
+        #region 脚本执行
+
         /// <summary>
         /// 执行脚本
         /// </summary>
@@ -160,6 +167,10 @@ namespace RubyCore
             if (state != 0) RbException.CatchThrowToCLR();
         }
 
+        #endregion
+
+        #region 加载路径
+
         /// <summary>
         /// 添加 Ruby feature 搜索目录
         /// <para>用于让 require 可以找到自定义库目录或宿主环境额外库目录</para>
@@ -179,9 +190,64 @@ namespace RubyCore
         /// </summary>
         public static string[] LoadPath => new RbArray(Runtime.LoadPath).As<string[]>();
 
+        #endregion
+
+        #region 全局函数
+
+        private static void RegisterGlobalFunction(string name, Delegate del, int arity)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 全局函数名称不能为空", nameof(name));
+            if (del is null) throw new ArgumentNullException(nameof(del));
+
+            RbCallback.KeepAlive(del);
+            Runtime.rb_define_global_function(name, del, arity);
+        }
+
+        /// <summary>
+        /// 定义 Ruby 全局函数
+        /// </summary>
+        /// <param name="name">函数名称</param>
+        /// <param name="func">函数委托</param>
+        public static void DefineGlobalFunction(string name, Func<RbObject, RbObject[], RbObject> func)
+        {
+            RegisterGlobalFunction(name, RbCallback.Create(func), -1);
+        }
+
+        /// <summary>
+        /// 定义不返回值的 Ruby 全局函数
+        /// <para>委托执行完成后自动向 Ruby 返回 nil</para>
+        /// </summary>
+        /// <param name="name">函数名称</param>
+        /// <param name="action">函数委托</param>
+        public static void DefineGlobalFunction(string name, Action<RbObject, RbObject[]> action)
+        {
+            RegisterGlobalFunction(name, RbCallback.Create(action), -1);
+        }
+
+        /// <summary>
+        /// 获取 Ruby 全局函数对象
+        /// </summary>
+        public static RbObject GetGlobalFunction(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 全局函数名称不能为空", nameof(name));
+
+            return Runtime.rb_cObject().Obj.InvokeMethod("new").InvokeMethod("method", name);
+        }
+
+        /// <summary>
+        /// 调用 Ruby 全局函数
+        /// </summary>
+        public static RbObject InvokeGlobalFunction(string name, params object[] args)
+        {
+            return GetGlobalFunction(name).Invoke(args);
+        }
+
+        #endregion
+
+        #region Require 与常量
+
         /// <summary>
         /// 加载 Ruby feature
-        /// <para>使用 rb_protect 包装 rb_require，Ruby require 失败时会转换为 CLR 异常</para>
         /// </summary>
         /// <param name="feature">Ruby feature 名称，例如 set 或 json</param>
         /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
@@ -197,25 +263,11 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 加载 Ruby feature 并按同名常量获取对象
-        /// <para>仅适用于 feature 名称和顶层常量名称完全一致的场景</para>
-        /// </summary>
-        /// <param name="feature">Ruby feature 名称，同时作为顶层常量名称</param>
-        /// <param name="constant">获取到的 Ruby 常量对象</param>
-        /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
-        public static bool Require(string feature, out RbObject constant)
-        {
-            return Require(feature, feature, out constant);
-        }
-
-        /// <summary>
         /// 加载 Ruby feature 并获取指定常量
-        /// <para>require 本身只返回是否首次加载，模块或类需要通过常量名再查找</para>
         /// </summary>
         /// <param name="feature">Ruby feature 名称，例如 set 或 json</param>
         /// <param name="constantName">加载后要获取的顶层常量名称，例如 Set 或 JSON</param>
         /// <param name="constant">获取到的 Ruby 常量对象</param>
-        /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
         public static bool Require(string feature, string constantName, out RbObject constant)
         {
             var result = Require(feature);
@@ -224,8 +276,35 @@ namespace RubyCore
         }
 
         /// <summary>
+        /// <inheritdoc cref="Require(string, string, out RbObject)"/>
+        /// <para>用于显式声明 out dynamic 或其他兼容托管类型的场景</para>
+        /// </summary>
+        public static bool Require<T>(string feature, string constantName, out T constant)
+        {
+            var result = Require(feature, constantName, out var rbConstant);
+            constant = (T)(object)rbConstant;
+            return result;
+        }
+
+        /// <summary>
+        /// 加载 Ruby feature 并按同名常量获取对象
+        /// </summary>
+        public static bool Require(string feature, out RbObject constant)
+        {
+            return Require(feature, feature, out constant);
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="Require(string, out RbObject)"/>
+        /// <para>用于显式声明 out dynamic 或其他兼容托管类型的场景</para>
+        /// </summary>
+        public static bool Require<T>(string feature, out T constant)
+        {
+            return Require(feature, feature, out constant);
+        }
+
+        /// <summary>
         /// 获取 Ruby 顶层常量
-        /// <para>常量不存在时 Ruby NameError 会转换为 CLR 异常</para>
         /// </summary>
         /// <param name="name">顶层常量名称，例如 Object、File、JSON 或自定义模块名</param>
         public static RbObject GetConstant(string name)
@@ -240,5 +319,6 @@ namespace RubyCore
         }
 
         #endregion
+
     }
 }

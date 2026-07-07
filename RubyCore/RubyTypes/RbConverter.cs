@@ -83,7 +83,7 @@ namespace RubyCore
             if (type.IsArray)
             {
                 var elementType = type.GetElementType();
-                var array = value.Invoke("to_a");
+                var array = value.InvokeMethod("to_a");
                 var length = array.Length();
                 var managedArray = Array.CreateInstance(elementType, length);
 
@@ -101,7 +101,7 @@ namespace RubyCore
             {
                 var elementType = type.GetGenericArguments()[0];
                 var list = (IList)Activator.CreateInstance(type);
-                var array = value.Invoke("to_a");
+                var array = value.InvokeMethod("to_a");
                 var length = array.Length();
 
                 for (int i = 0; i < length; i++)
@@ -120,7 +120,7 @@ namespace RubyCore
                 var keyType = genericArgs[0];
                 var valueType = genericArgs[1];
                 var dictionary = (IDictionary)Activator.CreateInstance(type);
-                var pairs = value.Invoke("to_a");
+                var pairs = value.InvokeMethod("to_a");
                 var length = pairs.Length();
 
                 for (int i = 0; i < length; i++)
