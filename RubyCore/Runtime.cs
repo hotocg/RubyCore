@@ -257,6 +257,11 @@ namespace RubyCore
         internal static VALUE rb_const_get(VALUE klass, ID id) => Delegates.rb_const_get(klass, id);
 
         /// <summary>
+        /// 设置 Ruby 常量
+        /// </summary>
+        internal static void rb_const_set(VALUE klass, ID id, VALUE value) => Delegates.rb_const_set(klass, id, value);
+
+        /// <summary>
         /// 以保护模式获取 Ruby 常量
         /// </summary>
         internal static VALUE rb_const_get_protect(VALUE klass, VALUE name, out int state)
@@ -266,6 +271,19 @@ namespace RubyCore
             rb_ary_push(args, name);
 
             return rb_protect(ConstGetProtectFunc, args, out state);
+        }
+
+        /// <summary>
+        /// 以保护模式设置 Ruby 常量
+        /// </summary>
+        internal static VALUE rb_const_set_protect(VALUE klass, VALUE name, VALUE value, out int state)
+        {
+            var args = rb_ary_new();
+            rb_ary_push(args, klass);
+            rb_ary_push(args, name);
+            rb_ary_push(args, value);
+
+            return rb_protect(ConstSetProtectFunc, args, out state);
         }
 
         #endregion
@@ -518,6 +536,14 @@ namespace RubyCore
             return rb_const_get(klass, rb_sym2id(name));
         };
 
+        private static readonly Delegates.Delegate_rb_protect_func ConstSetProtectFunc = data => {
+            var klass = rb_ary_entry(data, 0);
+            var name = rb_ary_entry(data, 1);
+            var value = rb_ary_entry(data, 2);
+            rb_const_set(klass, rb_sym2id(name), value);
+            return value;
+        };
+
         private static readonly Delegates.Delegate_rb_protect_func FuncallProtectFunc = data => {
             var handle = GCHandle.FromIntPtr(data.Pointer);
             var callData = (FuncallProtectData)handle.Target;
@@ -572,6 +598,7 @@ namespace RubyCore
                 rb_define_module_function = WindowsLoader.GetFuncByName<Delegate_rb_define_module_function>(nameof(rb_define_module_function), _ApiDll);
                 rb_define_global_function = WindowsLoader.GetFuncByName<Delegate_rb_define_global_function>(nameof(rb_define_global_function), _ApiDll);
                 rb_const_get = WindowsLoader.GetFuncByName<Delegate_rb_const_get>(nameof(rb_const_get), _ApiDll);
+                rb_const_set = WindowsLoader.GetFuncByName<Delegate_rb_const_set>(nameof(rb_const_set), _ApiDll);
                 #endregion
 
                 #region 对象
@@ -682,6 +709,9 @@ namespace RubyCore
             [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
             internal delegate VALUE Delegate_rb_const_get(VALUE klass, ID id);
             internal static Delegate_rb_const_get rb_const_get;
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void Delegate_rb_const_set(VALUE klass, ID id, VALUE value);
+            internal static Delegate_rb_const_set rb_const_set;
             #endregion
 
             #region 对象

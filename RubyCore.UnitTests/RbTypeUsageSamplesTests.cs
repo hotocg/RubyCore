@@ -56,6 +56,8 @@ namespace RubyCore.UnitTests
             // 用 Ruby 脚本准备一个带属性、普通方法、索引器和命名参数的样例类
             RbEngine.Exec(@"
                 class RubyCoreSampleUser
+                  Address = Struct.new(:city)
+
                   attr_accessor :name
 
                   def initialize
@@ -105,11 +107,17 @@ namespace RubyCore.UnitTests
             RbObject dynamicGreeting = dynamicUser.greet("Hello");
             RbObject dynamicItem = dynamicUser[1];
             RbObject dynamicNamedArgs = dynamicUser.describe(name: "Alice", age: 18);
+            dynamic dynamicUserClass = RbEngine.GetConstant("RubyCoreSampleUser");
+            RbObject dynamicNestedConstant = dynamicUserClass.Address;
+            dynamicUserClass.Country = "CN";
+            RbObject dynamicAssignedConstant = dynamicUserClass.Country;
 
             Assert.Equal("Jerry", dynamicName.As<string>());
             Assert.Equal("Hello, Jerry", dynamicGreeting.As<string>());
             Assert.Equal("changed", dynamicItem.As<string>());
             Assert.Equal("Alice:18", dynamicNamedArgs.As<string>());
+            Assert.Equal("RubyCoreSampleUser::Address", dynamicNestedConstant.InvokeMethod("name").As<string>());
+            Assert.Equal("CN", dynamicAssignedConstant.As<string>());
         }
 
         /// <summary>

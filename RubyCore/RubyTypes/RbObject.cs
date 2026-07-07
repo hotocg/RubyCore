@@ -267,6 +267,63 @@ namespace RubyCore
         }
         #endregion
 
+        #region 常量
+        /// <summary>
+        /// 获取当前模块或类下的 Ruby 常量
+        /// <para>等价于 Ruby 的 Module::Constant</para>
+        /// </summary>
+        public RbObject GetConstant(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 常量名称不能为空", nameof(name));
+
+            var symbol = new RbSymbol(name);
+            var result = Runtime.rb_const_get_protect(this.Ref, symbol.Ref, out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+
+            return result.Obj;
+        }
+
+        /// <summary>
+        /// 尝试获取当前模块或类下的 Ruby 常量
+        /// </summary>
+        public bool TryGetConstant(string name, out RbObject result)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                result = null;
+                return false;
+            }
+
+            var symbol = new RbSymbol(name);
+            var value = Runtime.rb_const_get_protect(this.Ref, symbol.Ref, out int state);
+            if (state != 0)
+            {
+                Runtime.rb_set_errinfo(RbTypeMap.Qnil.Ref);
+                result = null;
+                return false;
+            }
+
+            result = value.Obj;
+            return true;
+        }
+
+        /// <summary>
+        /// 设置当前模块或类下的 Ruby 常量
+        /// <para>等价于 Ruby 的 Module::Constant = value</para>
+        /// </summary>
+        public RbObject SetConstant(string name, object value)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 常量名称不能为空", nameof(name));
+
+            var symbol = new RbSymbol(name);
+            var rbValue = RbConverter.ToRubyValue(value);
+            var result = Runtime.rb_const_set_protect(this.Ref, symbol.Ref, rbValue.Ref, out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+
+            return result.Obj;
+        }
+        #endregion
+
         #region Ruby 谓词和特殊方法
         /// <summary>
         /// 判断对象是否属于指定类或模块
@@ -370,14 +427,20 @@ namespace RubyCore
         /// </summary>
         public override bool TryGetMember(GetMemberBinder binder, out object result)
         {
-            if (!HasAttr(binder.Name))
+            if (HasAttr(binder.Name))
             {
-                result = null;
-                return false;
+                result = GetAttr(binder.Name);
+                return true;
             }
 
-            result = GetAttr(binder.Name);
-            return true;
+            if (TryGetConstant(binder.Name, out var constant))
+            {
+                result = constant;
+                return true;
+            }
+
+            result = null;
+            return false;
         }
 
         /// <summary>
@@ -385,7 +448,13 @@ namespace RubyCore
         /// </summary>
         public override bool TrySetMember(SetMemberBinder binder, object value)
         {
-            SetAttr(binder.Name, value);
+            if (RespondTo($"{binder.Name}="))
+            {
+                SetAttr(binder.Name, value);
+                return true;
+            }
+
+            SetConstant(binder.Name, value);
             return true;
         }
 
