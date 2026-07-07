@@ -58,6 +58,18 @@ namespace RubyCore.Test
 
                 RbEngine.Initialize(DllPath);
 
+                dynamic obj = RbEngine.Exec("['a', 'b', 'c']");
+                var first = obj[0];
+
+                dynamic num1 = new RbInt(1);
+                var sum = num1 + 2;
+
+                var list = obj.As<List<string>>();
+
+                dynamic v = new RbInt(123);
+                Console.WriteLine(v.to_s);
+
+
                 var module = new RbModule("Su66Core");
                 //module.DefineFunction(nameof(Test), new Delegate_Test(Test));
                 //module.DefineFunction(nameof(Test1), new Delegate_Test1(Test1));
@@ -65,23 +77,28 @@ namespace RubyCore.Test
 
                 module.DefineFunction("Test2", (self, args) =>
                 {
-                    Console.WriteLine($"{self} {args.Length}");
+                    Console.WriteLine($"[Info] {self} {args.Length}");
                     foreach (var arg in args)
                     {
-                        Console.WriteLine($"参数: {arg}");
+                        Console.WriteLine($"[参数] {arg}");
                     }
-                    throw new Exception("Test CLR Exception!");
+                    //throw new Exception("Test CLR Exception!");
                     return new RbString("啊哈哈");
                 });
 
-                try
-                {
-                    Console.WriteLine($"Invoke: {module.Invoke("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Invoke CLR 捕获: {ex.Message}");
-                }
+                //try
+                //{
+                //    Console.WriteLine($"Invoke: {module.Invoke("Test2", new RbString("1"), RbTypeMap.Qtrue)}");
+                //}
+                //catch (Exception ex)
+                //{
+                //    Console.WriteLine($"Invoke CLR 捕获: {ex.Message}");
+                //}
+
+
+                Console.WriteLine($"Invoke: {((dynamic)module).Test2(1)}");
+
+                return;
 
                 Console.WriteLine(new RbInt(100) + new RbInt(200));
                 //Console.WriteLine($"Invoke: {module.Invoke("methods", new RbString(":test2"))}");
