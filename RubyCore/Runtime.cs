@@ -103,6 +103,28 @@ namespace RubyCore
             IsInitialized = false;
         }
 
+        /// <summary>
+        /// 添加 Ruby 加载路径
+        /// </summary>
+        internal static void AddLoadPath(string directory)
+        {
+            var rubyPath = directory.Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/');
+            using (var pathPtr = new StrPtr(rubyPath))
+            {
+                ruby_incpush(pathPtr.Pointer);
+            }
+
+            // 旧实现：直接操作 Ruby 的 $LOAD_PATH
+            // var loadPath = rb_gv_get("$LOAD_PATH");
+            // var pathValue = rb_utf8_str_new_cstr(rubyPath);
+            // var exists = rb_funcallv(loadPath, rb_intern("include?"), pathValue);
+            //
+            // if (!new RbBool(exists).Value)
+            // {
+            //     rb_funcallv(loadPath, rb_intern("unshift"), pathValue);
+            // }
+        }
+
         // ==================================================
         #region Api
 
@@ -126,6 +148,11 @@ namespace RubyCore
         /// 初始化标准库加载路径
         /// </summary>
         internal static void ruby_init_loadpath() => Delegates.ruby_init_loadpath();
+
+        /// <summary>
+        /// 添加 Ruby require 搜索路径
+        /// </summary>
+        internal static void ruby_incpush(IntPtr path) => Delegates.ruby_incpush(path);
 
         /// <summary>
         /// 结束 Ruby 运行时
@@ -195,6 +222,28 @@ namespace RubyCore
         /// <param name="func">函数委托</param>
         /// <param name="arity">参数数量</param>
         internal static void rb_define_module_function(VALUE klass, string mid, Delegate func, int arity) => Delegates.rb_define_module_function(klass, mid, func, arity);
+
+        /// <summary>
+        /// 获取顶层 Object 类
+        /// </summary>
+        internal static VALUE rb_cObject() => WindowsLoader.GetValueByName("rb_cObject", _ApiDll);
+
+        /// <summary>
+        /// 获取 Ruby 常量
+        /// </summary>
+        internal static VALUE rb_const_get(VALUE klass, ID id) => Delegates.rb_const_get(klass, id);
+
+        /// <summary>
+        /// 以保护模式获取 Ruby 常量
+        /// </summary>
+        internal static VALUE rb_const_get_protect(VALUE klass, VALUE name, out int state)
+        {
+            var args = rb_ary_new();
+            rb_ary_push(args, klass);
+            rb_ary_push(args, name);
+
+            return rb_protect(ConstGetProtectFunc, args, out state);
+        }
 
         #endregion
 
@@ -414,6 +463,12 @@ namespace RubyCore
             return rb_require(featurePtr);
         };
 
+        private static readonly Delegates.Delegate_rb_protect_func ConstGetProtectFunc = data => {
+            var klass = rb_ary_entry(data, 0);
+            var name = rb_ary_entry(data, 1);
+            return rb_const_get(klass, rb_sym2id(name));
+        };
+
         #region 初始化委托
         internal static class Delegates
         {
@@ -429,6 +484,7 @@ namespace RubyCore
                 ruby_setup = WindowsLoader.GetFuncByName<Delegate_ruby_setup>(nameof(ruby_setup), _ApiDll);
                 ruby_init = WindowsLoader.GetFuncByName<Delegate_ruby_init>(nameof(ruby_init), _ApiDll);
                 ruby_init_loadpath = WindowsLoader.GetFuncByName<Delegate_ruby_init_loadpath>(nameof(ruby_init_loadpath), _ApiDll);
+                ruby_incpush = WindowsLoader.GetFuncByName<Delegate_ruby_incpush>(nameof(ruby_incpush), _ApiDll);
                 ruby_finalize = WindowsLoader.GetFuncByName<Delegate_ruby_finalize>(nameof(ruby_finalize), _ApiDll);
                 ruby_show_version = WindowsLoader.GetFuncByName<Delegate_ruby_show_version>(nameof(ruby_show_version), _ApiDll);
                 rb_eval_string = WindowsLoader.GetFuncByName<Delegate_rb_eval_string>(nameof(rb_eval_string), _ApiDll);
@@ -443,6 +499,7 @@ namespace RubyCore
                 #region 模块
                 rb_define_module = WindowsLoader.GetFuncByName<Delegate_rb_define_module>(nameof(rb_define_module), _ApiDll);
                 rb_define_module_function = WindowsLoader.GetFuncByName<Delegate_rb_define_module_function>(nameof(rb_define_module_function), _ApiDll);
+                rb_const_get = WindowsLoader.GetFuncByName<Delegate_rb_const_get>(nameof(rb_const_get), _ApiDll);
                 #endregion
 
                 #region 对象
@@ -515,6 +572,8 @@ namespace RubyCore
             internal static Delegate_ruby_init ruby_init;
             internal delegate void Delegate_ruby_init_loadpath();
             internal static Delegate_ruby_init_loadpath ruby_init_loadpath;
+            internal delegate void Delegate_ruby_incpush(IntPtr path);
+            internal static Delegate_ruby_incpush ruby_incpush;
             internal delegate void Delegate_ruby_finalize();
             internal static Delegate_ruby_finalize ruby_finalize;
 
@@ -545,6 +604,9 @@ namespace RubyCore
             internal static Delegate_rb_define_module rb_define_module;
             internal delegate void Delegate_rb_define_module_function(VALUE klass, string mid, Delegate func, int arity);
             internal static Delegate_rb_define_module_function rb_define_module_function;
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate VALUE Delegate_rb_const_get(VALUE klass, ID id);
+            internal static Delegate_rb_const_get rb_const_get;
             #endregion
 
             #region 对象

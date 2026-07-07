@@ -110,6 +110,7 @@ namespace RubyCore
             ");
         }
 
+        #region 常用方法
         /// <summary>
         /// 执行脚本
         /// </summary>
@@ -124,54 +125,6 @@ namespace RubyCore
             if (state != 0) RbException.CatchThrowToCLR();
 
             return result.Obj;
-        }
-
-        /// <summary>
-        /// 加载并执行 Ruby 脚本文件
-        /// </summary>
-        /// <param name="filePath">Ruby 脚本文件路径</param>
-        /// <param name="wrap">是否在匿名模块中加载</param>
-        public static void Load(string filePath, bool wrap = false)
-        {
-            if (string.IsNullOrWhiteSpace(filePath))
-            {
-                throw new ArgumentException("Ruby 脚本文件路径不能为空", nameof(filePath));
-            }
-
-            var fullPath = Path.GetFullPath(filePath);
-            if (!File.Exists(fullPath))
-            {
-                throw new FileNotFoundException($"Ruby 脚本文件不存在: {fullPath}", fullPath);
-            }
-
-            Runtime.AutoInit();
-
-            var rubyPath = fullPath.Replace(Path.DirectorySeparatorChar, '/');
-            var rbPath = new RbString(rubyPath);
-            Runtime.rb_load_protect(rbPath.Ref, wrap ? 1 : 0, out int state);
-            if (state != 0) RbException.CatchThrowToCLR();
-        }
-
-        /// <summary>
-        /// 加载 Ruby feature
-        /// <para>使用 rb_protect 包装 rb_require，Ruby require 失败时会转换为 CLR 异常</para>
-        /// </summary>
-        /// <param name="feature">Ruby feature 名称，例如 set 或 json</param>
-        /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
-        public static bool Require(string feature)
-        {
-            if (string.IsNullOrWhiteSpace(feature))
-            {
-                throw new ArgumentException("Ruby feature 名称不能为空", nameof(feature));
-            }
-
-            Runtime.AutoInit();
-
-            var rbFeature = new RbString(feature);
-            var result = Runtime.rb_require_protect(rbFeature.Ref, out int state);
-            if (state != 0) RbException.CatchThrowToCLR();
-
-            return new RbBool(result).Value;
         }
 
         /// <summary>
@@ -194,5 +147,101 @@ namespace RubyCore
 
         }
 
+        /// <summary>
+        /// 加载并执行 Ruby 脚本文件
+        /// </summary>
+        /// <param name="filePath">Ruby 脚本文件路径</param>
+        /// <param name="wrap">是否在匿名模块中加载</param>
+        public static void Load(string filePath, bool wrap = false)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentException("脚本文件路径不能为空", nameof(filePath));
+            var fullPath = Path.GetFullPath(filePath);
+            if (!File.Exists(fullPath)) throw new FileNotFoundException($"脚本文件不存在: {fullPath}", fullPath);
+            Runtime.AutoInit();
+
+            var rubyPath = fullPath.Replace(Path.DirectorySeparatorChar, '/');
+            var rbPath = new RbString(rubyPath);
+            Runtime.rb_load_protect(rbPath.Ref, wrap ? 1 : 0, out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+        }
+
+        /// <summary>
+        /// 添加 Ruby feature 搜索目录
+        /// <para>用于让 require 可以找到自定义库目录或宿主环境额外库目录</para>
+        /// </summary>
+        /// <param name="directory">Ruby 库目录</param>
+        public static void AddLoadPath(string directory)
+        {
+            if (string.IsNullOrWhiteSpace(directory)) throw new ArgumentException("加载目录不能为空", nameof(directory));
+            var fullPath = Path.GetFullPath(directory);
+            if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"加载目录不存在: {fullPath}");
+            Runtime.AutoInit();
+
+            Runtime.AddLoadPath(fullPath);
+        }
+
+        /// <summary>
+        /// 加载 Ruby feature
+        /// <para>使用 rb_protect 包装 rb_require，Ruby require 失败时会转换为 CLR 异常</para>
+        /// </summary>
+        /// <param name="feature">Ruby feature 名称，例如 set 或 json</param>
+        /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
+        public static bool Require(string feature)
+        {
+            if (string.IsNullOrWhiteSpace(feature)) throw new ArgumentException("Ruby feature 名称不能为空", nameof(feature));
+            Runtime.AutoInit();
+
+            var rbFeature = new RbString(feature);
+            var result = Runtime.rb_require_protect(rbFeature.Ref, out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+
+            return new RbBool(result).Value;
+        }
+
+        /// <summary>
+        /// 加载 Ruby feature 并按同名常量获取对象
+        /// <para>仅适用于 feature 名称和顶层常量名称完全一致的场景</para>
+        /// </summary>
+        /// <param name="feature">Ruby feature 名称，同时作为顶层常量名称</param>
+        /// <param name="constant">获取到的 Ruby 常量对象</param>
+        /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
+        public static bool Require(string feature, out RbObject constant)
+        {
+            return Require(feature, feature, out constant);
+        }
+
+        /// <summary>
+        /// 加载 Ruby feature 并获取指定常量
+        /// <para>require 本身只返回是否首次加载，模块或类需要通过常量名再查找</para>
+        /// </summary>
+        /// <param name="feature">Ruby feature 名称，例如 set 或 json</param>
+        /// <param name="constantName">加载后要获取的顶层常量名称，例如 Set 或 JSON</param>
+        /// <param name="constant">获取到的 Ruby 常量对象</param>
+        /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
+        public static bool Require(string feature, string constantName, out RbObject constant)
+        {
+            var result = Require(feature);
+            constant = GetConstant(constantName);
+            return result;
+        }
+
+        /// <summary>
+        /// 获取 Ruby 顶层常量
+        /// <para>常量不存在时 Ruby NameError 会转换为 CLR 异常</para>
+        /// </summary>
+        /// <param name="name">顶层常量名称，例如 Object、File、JSON 或自定义模块名</param>
+        public static RbObject GetConstant(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 常量名称不能为空", nameof(name));
+            Runtime.AutoInit();
+
+            var symbol = new RbSymbol(name);
+            var result = Runtime.rb_const_get_protect(Runtime.rb_cObject(), symbol.Ref, out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+
+            return result.Obj;
+        }
+
+        #endregion
     }
 }

@@ -38,18 +38,29 @@ namespace RubyCore.Test
                 RbEngine.Initialize();
 
                 // ==================================================
-                dynamic obj = RbEngine.Exec("['a', 'b', 'c']");
-                var first = obj[0];
+                //dynamic obj = RbEngine.Exec("['a', 'b', 'c']");
+                //var first = obj[0];
 
-                dynamic num1 = new RbInt(1);
-                var sum = num1 + 2;
+                //dynamic num1 = new RbInt(1);
+                //var sum = num1 + 2;
 
-                var list = obj.As<List<string>>();
+                //var list = obj.As<List<string>>();
 
-                dynamic v = new RbInt(123);
-                Console.WriteLine(v.to_s);
+                //dynamic v = new RbInt(123);
+                //Console.WriteLine(v.to_s);
 
                 // ==================================================
+                RbEngine.AddLoadPath(@"C:\Program Files\SketchUp\SketchUp 2025\SketchUp\Tools\RubyStdLib");
+                RbEngine.AddLoadPath(@"C:\Program Files\SketchUp\SketchUp 2025\SketchUp\Tools\RubyStdLib\platform_specific");
+
+                RbEngine.Exec("puts $LOAD_PATH");
+                RbEngine.Exec("puts $LOADED_FEATURES");
+                //var requireResult = RbEngine.Require(json);
+                var requireResult = RbEngine.Require("json", "JSON", out var Json);
+                Console.WriteLine(((dynamic)Json).generate(new RbArray(1, "2")));
+                //var requireResult = RbEngine.Require("json");
+
+                return;
                 var module = new RbModule("RbCore");
 
                 module.DefineFunction("Test2", (self, args) =>

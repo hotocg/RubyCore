@@ -154,7 +154,7 @@ end
 
         /// <summary>
         /// RbEngine.Require 加载 Ruby feature
-        /// <para>覆盖 require 成功加载、重复加载返回 false，以及 rb_protect 将 Ruby require 异常转换为 CLR 异常</para>
+        /// <para>覆盖 require 成功加载、获取模块常量、重复加载返回 false，以及 rb_protect 将 Ruby require 异常转换为 CLR 异常</para>
         /// </summary>
         [RubyRuntimeFact]
         public void RbEngine_Require_ShowFeatureLoadAndRubyErrorUsage()
@@ -164,6 +164,8 @@ end
             var moduleName = "RubyCoreRequiredFileSample" + Guid.NewGuid().ToString("N");
             var scriptPath = Path.Combine(Path.GetTempPath(), moduleName + ".rb");
             var rubyFeaturePath = scriptPath.Replace(Path.DirectorySeparatorChar, '/');
+            var sameNameModuleName = "RubyCoreSameNameFeatureSample" + Guid.NewGuid().ToString("N");
+            var sameNameScriptPath = Path.Combine(Path.GetTempPath(), sameNameModuleName + ".rb");
 
             try
             {
@@ -176,19 +178,42 @@ module {moduleName}
 end
 ", System.Text.Encoding.UTF8);
 
-                Assert.True(RbEngine.Require(rubyFeaturePath));
-                Assert.Equal(123, RbEngine.Exec($"{moduleName}.value").As<int>());
+                Assert.True(RbEngine.Require(rubyFeaturePath, moduleName, out var module));
+                Assert.Equal(123, module.Invoke("value").As<int>());
+
+                File.WriteAllText(sameNameScriptPath, $@"
+module {sameNameModuleName}
+  def self.value
+    456
+  end
+end
+", System.Text.Encoding.UTF8);
+
+                // feature 名和顶层常量名完全一致时，可以使用默认 out 重载
+                RbEngine.AddLoadPath(Path.GetTempPath());
+                Assert.True(RbEngine.Require(sameNameModuleName, out var sameNameModule));
+                Assert.Equal(456, sameNameModule.Invoke("value").As<int>());
+
+                // require 不会返回模块对象；需要模块或类时可以用 GetConstant 走 Ruby C API 获取顶层常量
+                var constant = RbEngine.GetConstant(moduleName);
+                Assert.Equal(123, constant.Invoke("value").As<int>());
 
                 // Ruby require 对同一个 feature 只加载一次，重复加载会返回 false
-                Assert.False(RbEngine.Require(rubyFeaturePath));
+                Assert.False(RbEngine.Require(rubyFeaturePath, moduleName, out module));
+                Assert.Equal(123, module.Invoke("value").As<int>());
 
                 // Require 内部使用 rb_protect 包住 rb_require，因此 Ruby LoadError 会转换成 CLR Exception
                 var exception = Assert.Throws<Exception>(() => RbEngine.Require(moduleName + "_missing_feature"));
                 Assert.Contains(moduleName + "_missing_feature", exception.Message);
+
+                // GetConstant 内部也使用 rb_protect 包住 rb_const_get，因此常量不存在同样会转换成 CLR Exception
+                var nameException = Assert.Throws<Exception>(() => RbEngine.GetConstant(moduleName + "MissingConstant"));
+                Assert.Contains(moduleName + "MissingConstant", nameException.Message);
             }
             finally
             {
                 if (File.Exists(scriptPath)) File.Delete(scriptPath);
+                if (File.Exists(sameNameScriptPath)) File.Delete(sameNameScriptPath);
             }
         }
 
