@@ -412,14 +412,43 @@ end
                 lastMessage = args.Length == 0 ? string.Empty : args[0].As<string>();
             });
 
+            // C# 回调里抛出的 CLR 异常会转换成 Ruby RuntimeError，Ruby begin/rescue 可以捕获
+            module.DefineFunction("raise_clr_error", (self, args) => {
+                throw new InvalidOperationException("clr callback error sample");
+            });
+
             // Ruby 脚本侧可以直接调用 C# 注册的模块方法
             Assert.Equal("a|2|true", RbEngine.Exec($"{moduleName}.join_args('a', 2, true)").As<string>());
             Assert.True(RbEngine.Exec($"{moduleName}.remember('from ruby').nil?").As<bool>());
             Assert.Equal("from ruby", lastMessage);
+            Assert.Equal("clr callback error sample", RbEngine.Exec($@"
+                begin
+                  {moduleName}.raise_clr_error
+                rescue => e
+                  e.message
+                end
+            ").As<string>());
+
+            var exception = Assert.Throws<Exception>(() => RbEngine.Exec($"{moduleName}.raise_clr_error"));
+            Assert.Contains("clr callback error sample", exception.Message);
 
             // C# 侧也可以拿回模块对象后继续 Invoke 模块方法
             var moduleFromRuby = RbEngine.Exec(moduleName);
             Assert.Equal("x|y", moduleFromRuby.Invoke("join_args", "x", "y").As<string>());
+
+            DefineTemporaryModuleFunction(moduleName + "KeepAlive");
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            // Ruby VM 只保存 C 函数指针；即使 C# 的模块包装对象已离开作用域，注册函数仍应可调用
+            Assert.Equal("still alive", RbEngine.Exec($"{moduleName}KeepAlive.ping").As<string>());
+        }
+
+        private static void DefineTemporaryModuleFunction(string moduleName)
+        {
+            var module = new RbModule(moduleName);
+            module.DefineFunction("ping", (self, args) => new RbString("still alive"));
         }
 
         /// <summary>

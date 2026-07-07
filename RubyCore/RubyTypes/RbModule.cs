@@ -9,12 +9,18 @@ namespace RubyCore
 {
     public class RbModule : RbObject
     {
-        // 用于防止 Delegate 被 GC 回收导致崩溃
-        private readonly List<Delegate> _delegateKeepAlive = new List<Delegate>();
+        private static readonly object DelegateKeepAliveLock = new object();
+        private static readonly List<Delegate> DelegateKeepAlive = new List<Delegate>();
 
         internal RbModule(VALUE refVal) : base(refVal) { }
 
-        public RbModule(string name) : base(Runtime.rb_define_module(name)) { }
+        public RbModule(string name) : base(DefineModule(name)) { }
+
+        private static VALUE DefineModule(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 模块名称不能为空", nameof(name));
+            return Runtime.rb_define_module(name);
+        }
 
         /// <summary>
         /// <inheritdoc cref="Runtime.rb_define_module_function"/>
@@ -24,7 +30,14 @@ namespace RubyCore
         /// <param name="arity"></param>
         private void RegisterFunc(string name, Delegate del, int arity)
         {
-            _delegateKeepAlive.Add(del);
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 模块函数名称不能为空", nameof(name));
+            if (del is null) throw new ArgumentNullException(nameof(del));
+
+            lock (DelegateKeepAliveLock)
+            {
+                DelegateKeepAlive.Add(del); // Ruby 只保存 C 函数指针，必须让托管 delegate 跟随 Ruby VM 生命周期保活
+            }
+
             Runtime.rb_define_module_function(this.Ref, name, del, arity);
         }
 
@@ -108,9 +121,19 @@ namespace RubyCore
         /// <param name="func">函数</param>
         public void DefineFunction(string name, Func<RbObject, RbObject[], RbObject> func)
         {
-            VarArgDelegate wrapper = (argc, argv, self) => {
-                var args = ParseArgIntPtr(argc, argv);
-                return func(self.Obj, args).Ref;
+            if (func is null) throw new ArgumentNullException(nameof(func));
+
+            VarArgDelegate wrapper = (argc, argv, self) =>
+            {
+                try
+                {
+                    var args = ParseArgIntPtr(argc, argv);
+                    return (func(self.Obj, args) ?? RbTypeMap.Qnil).Ref;
+                }
+                catch (Exception ex)
+                {
+                    return RbException.RaiseClrExceptionToRuby(ex);
+                }
             };
             RegisterFunc(name, wrapper, -1);
         }
@@ -127,10 +150,20 @@ namespace RubyCore
         /// </param>
         public void DefineFunction(string name, Action<RbObject, RbObject[]> action)
         {
-            VarArgDelegate wrapper = (argc, argv, self) => {
-                var args = ParseArgIntPtr(argc, argv);
-                action(self.Obj, args);
-                return RbTypeMap.Qnil.Ref;
+            if (action is null) throw new ArgumentNullException(nameof(action));
+
+            VarArgDelegate wrapper = (argc, argv, self) =>
+            {
+                try
+                {
+                    var args = ParseArgIntPtr(argc, argv);
+                    action(self.Obj, args);
+                    return RbTypeMap.Qnil.Ref;
+                }
+                catch (Exception ex)
+                {
+                    return RbException.RaiseClrExceptionToRuby(ex);
+                }
             };
             RegisterFunc(name, wrapper, -1);
         }

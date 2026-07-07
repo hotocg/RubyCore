@@ -380,6 +380,11 @@ namespace RubyCore
         internal static void rb_set_errinfo(VALUE err) => Delegates.rb_set_errinfo(err);
 
         /// <summary>
+        /// 抛出 Ruby 异常对象
+        /// </summary>
+        internal static void rb_exc_raise(VALUE err) => Delegates.rb_exc_raise(err);
+
+        /// <summary>
         /// 创建 Ruby RuntimeError 异常对象
         /// </summary>
         internal static VALUE rb_new_runtime_error(string message)
@@ -540,6 +545,7 @@ namespace RubyCore
                 #region 异常
                 rb_errinfo = WindowsLoader.GetFuncByName<Delegate_rb_errinfo>(nameof(rb_errinfo), _ApiDll);
                 rb_set_errinfo = WindowsLoader.GetFuncByName<Delegate_rb_set_errinfo>(nameof(rb_set_errinfo), _ApiDll);
+                rb_exc_raise = WindowsLoader.GetFuncByName<Delegate_rb_exc_raise>(nameof(rb_exc_raise), _ApiDll);
                 #endregion
 
                 #region 数组
@@ -669,6 +675,8 @@ namespace RubyCore
             internal static Delegate_rb_errinfo rb_errinfo;
             internal delegate void Delegate_rb_set_errinfo(VALUE err);
             internal static Delegate_rb_set_errinfo rb_set_errinfo;
+            internal delegate void Delegate_rb_exc_raise(VALUE err);
+            internal static Delegate_rb_exc_raise rb_exc_raise;
             #endregion
 
             #region 数组

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 namespace RubyCore.Test
 {
@@ -34,8 +35,8 @@ namespace RubyCore.Test
                 //hostDir = @"C:\Program Files (x86)\SketchUp\SketchUp 2013";
                 //dllPath = Path.Combine(hostDir, "msvcrt-ruby18.dll");
 
-                //RbEngine.Initialize(DllPath);
-                RbEngine.Initialize();
+                RbEngine.Initialize(dllPath);
+                //RbEngine.Initialize();
 
                 // ==================================================
                 //dynamic obj = RbEngine.Exec("['a', 'b', 'c']");
@@ -50,8 +51,8 @@ namespace RubyCore.Test
                 //Console.WriteLine(v.to_s);
 
                 // ==================================================
-                RbEngine.AddLoadPath(@"C:\Program Files\SketchUp\SketchUp 2025\SketchUp\Tools\RubyStdLib");
-                RbEngine.AddLoadPath(@"C:\Program Files\SketchUp\SketchUp 2025\SketchUp\Tools\RubyStdLib\platform_specific");
+                RbEngine.AddLoadPath(Path.Combine(hostDir, @"Tools\RubyStdLib"));
+                RbEngine.AddLoadPath(Path.Combine(hostDir, @"Tools\RubyStdLib\platform_specific"));
 
                 RbEngine.Exec("puts $LOAD_PATH");
                 RbEngine.Exec("puts $LOADED_FEATURES");
@@ -65,13 +66,22 @@ namespace RubyCore.Test
 
                 module.DefineFunction("Test2", (self, args) =>
                 {
-                    Console.WriteLine($"[Info] {self} {args.Length}");
-                    foreach (var arg in args)
+                    try
                     {
-                        Console.WriteLine($"[参数] {arg}");
+                        Console.WriteLine($"[Info] {self} {args.Length}");
+                        foreach (var arg in args)
+                        {
+                            Console.WriteLine($"[参数] {arg}");
+                        }
+                        //throw new Exception("Test CLR Exception!");
+                        return new RbString("啊哈哈");
                     }
-                    //throw new Exception("Test CLR Exception!");
-                    return new RbString("啊哈哈");
+                    catch (Exception e)
+                    {
+                        MessageBox.Show($"{e}");
+                    }
+
+                    return RbTypeMap.Qnil;
                 });
 
                 module.DefineFunction("Test3", (self, args) =>

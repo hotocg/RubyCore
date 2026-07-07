@@ -157,7 +157,6 @@ namespace RubyCore
             if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentException("脚本文件路径不能为空", nameof(filePath));
             var fullPath = Path.GetFullPath(filePath);
             if (!File.Exists(fullPath)) throw new FileNotFoundException($"脚本文件不存在: {fullPath}", fullPath);
-            Runtime.AutoInit();
 
             var rubyPath = fullPath.Replace(Path.DirectorySeparatorChar, '/');
             var rbPath = new RbString(rubyPath);
@@ -175,7 +174,6 @@ namespace RubyCore
             if (string.IsNullOrWhiteSpace(directory)) throw new ArgumentException("加载目录不能为空", nameof(directory));
             var fullPath = Path.GetFullPath(directory);
             if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"加载目录不存在: {fullPath}");
-            Runtime.AutoInit();
 
             Runtime.AddLoadPath(fullPath);
         }
@@ -189,7 +187,6 @@ namespace RubyCore
         public static bool Require(string feature)
         {
             if (string.IsNullOrWhiteSpace(feature)) throw new ArgumentException("Ruby feature 名称不能为空", nameof(feature));
-            Runtime.AutoInit();
 
             var rbFeature = new RbString(feature);
             var result = Runtime.rb_require_protect(rbFeature.Ref, out int state);
@@ -233,7 +230,6 @@ namespace RubyCore
         public static RbObject GetConstant(string name)
         {
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Ruby 常量名称不能为空", nameof(name));
-            Runtime.AutoInit();
 
             var symbol = new RbSymbol(name);
             var result = Runtime.rb_const_get_protect(Runtime.rb_cObject(), symbol.Ref, out int state);

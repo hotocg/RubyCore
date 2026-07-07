@@ -9,6 +9,16 @@ namespace RubyCore
     public class RbException
     {
         /// <summary>
+        /// 将 CLR 异常转换为 Ruby RuntimeError 并抛回 Ruby
+        /// </summary>
+        public static VALUE RaiseClrExceptionToRuby(Exception ex)
+        {
+            var message = ex?.Message ?? "CLR 回调异常";
+            Runtime.rb_exc_raise(Runtime.rb_new_runtime_error(message));
+            return RbTypeMap.Qnil.Ref;
+        }
+
+        /// <summary>
         /// 捕获异常，如果有则抛出到 CLR 异常
         /// </summary>
         public static void CatchThrowToCLR()
