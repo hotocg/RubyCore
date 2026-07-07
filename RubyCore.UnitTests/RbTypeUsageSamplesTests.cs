@@ -255,6 +255,21 @@ end
             Assert.Equal("name", symbol.InvokeMethod("to_s").As<string>());
             Assert.False(symbol.Id.IsNull);
 
+            // Ruby 问号/感叹号方法在 C# 中不能直接点号调用，RbObject 提供常用封装
+            var emptyArray = new RbArray();
+            var hash = new RbHash();
+            hash.SetItem("name", "RubyCore");
+
+            Assert.True(text.RespondTo("upcase"));
+            Assert.True(text.IsA(RbEngine.GetConstant("String")));
+            Assert.True(text.KindOf(RbEngine.GetConstant("Object")));
+            Assert.True(text.InstanceOf(RbEngine.GetConstant("String")));
+            Assert.True(emptyArray.IsEmpty());
+            Assert.True(new RbArray("a", "b").Include("a"));
+            Assert.True(hash.HasKey("name"));
+            Assert.True(text.InvokePredicate("include", "ell"));
+            Assert.Equal("hello", new RbString("hello!").InvokeBang("chop").As<string>());
+
             // RbNumber 运算符本质是调用 Ruby 的 + - * /，结果仍然是 RbObject
             Assert.Equal(15, (left + right).As<int>());
             Assert.Equal(5, (left - right).As<int>());

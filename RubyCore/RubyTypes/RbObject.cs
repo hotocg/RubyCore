@@ -238,7 +238,16 @@ namespace RubyCore
         /// </summary>
         public bool HasAttr(string name)
         {
-            return InvokeMethod("respond_to?", name).As<bool>();
+            return RespondTo(name);
+        }
+
+        /// <summary>
+        /// 判断对象是否响应指定方法
+        /// <para>等价于 Ruby 的 respond_to?</para>
+        /// </summary>
+        public bool RespondTo(string name)
+        {
+            return InvokePredicate("respond_to", name);
         }
 
         /// <summary>
@@ -255,6 +264,80 @@ namespace RubyCore
         public RbObject SetAttr(string name, object value)
         {
             return InvokeMethod($"{name}=", value);
+        }
+        #endregion
+
+        #region Ruby 谓词和特殊方法
+        /// <summary>
+        /// 判断对象是否属于指定类或模块
+        /// <para>等价于 Ruby 的 is_a?</para>
+        /// </summary>
+        public bool IsA(object klass)
+        {
+            return InvokePredicate("is_a", klass);
+        }
+
+        /// <summary>
+        /// 判断对象是否属于指定类或模块
+        /// <para>等价于 Ruby 的 kind_of?</para>
+        /// </summary>
+        public bool KindOf(object klass)
+        {
+            return InvokePredicate("kind_of", klass);
+        }
+
+        /// <summary>
+        /// 判断对象是否正好是指定类的实例
+        /// <para>等价于 Ruby 的 instance_of?</para>
+        /// </summary>
+        public bool InstanceOf(object klass)
+        {
+            return InvokePredicate("instance_of", klass);
+        }
+
+        /// <summary>
+        /// 判断对象是否为空集合或空字符串
+        /// <para>等价于 Ruby 的 empty?</para>
+        /// </summary>
+        public bool IsEmpty()
+        {
+            return InvokePredicate("empty");
+        }
+
+        /// <summary>
+        /// 判断对象是否包含指定值
+        /// <para>等价于 Ruby 的 include?</para>
+        /// </summary>
+        public bool Include(object value)
+        {
+            return InvokePredicate("include", value);
+        }
+
+        /// <summary>
+        /// 判断对象是否包含指定键
+        /// <para>等价于 Ruby 的 key?</para>
+        /// </summary>
+        public virtual bool HasKey(object key)
+        {
+            return InvokePredicate("key", key);
+        }
+
+        /// <summary>
+        /// 调用 Ruby 问号结尾的谓词方法
+        /// <para>methodName 不需要包含问号</para>
+        /// </summary>
+        public bool InvokePredicate(string methodName, params object[] args)
+        {
+            return InvokeMethod($"{methodName}?", args).As<bool>();
+        }
+
+        /// <summary>
+        /// 调用 Ruby 感叹号结尾的方法
+        /// <para>methodName 不需要包含感叹号</para>
+        /// </summary>
+        public RbObject InvokeBang(string methodName, params object[] args)
+        {
+            return InvokeMethod($"{methodName}!", args);
         }
         #endregion
 

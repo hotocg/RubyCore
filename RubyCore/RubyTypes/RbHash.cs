@@ -54,7 +54,7 @@ namespace RubyCore
         /// <summary>
         /// 判断是否包含指定键
         /// </summary>
-        public bool HasKey(object key)
+        public override bool HasKey(object key)
         {
             var rbKey = RbConverter.ToRubyValue(key);
             return Runtime.rb_hash_has_key(this.Ref, rbKey.Ref).Obj.As<bool>();
