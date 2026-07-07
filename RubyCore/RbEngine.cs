@@ -153,6 +153,28 @@ namespace RubyCore
         }
 
         /// <summary>
+        /// 加载 Ruby feature
+        /// <para>使用 rb_protect 包装 rb_require，Ruby require 失败时会转换为 CLR 异常</para>
+        /// </summary>
+        /// <param name="feature">Ruby feature 名称，例如 set 或 json</param>
+        /// <returns>首次加载成功返回 true，已加载过返回 false</returns>
+        public static bool Require(string feature)
+        {
+            if (string.IsNullOrWhiteSpace(feature))
+            {
+                throw new ArgumentException("Ruby feature 名称不能为空", nameof(feature));
+            }
+
+            Runtime.AutoInit();
+
+            var rbFeature = new RbString(feature);
+            var result = Runtime.rb_require_protect(rbFeature.Ref, out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+
+            return new RbBool(result).Value;
+        }
+
+        /// <summary>
         /// 打印
         /// </summary>
         /// <param name="values"></param>

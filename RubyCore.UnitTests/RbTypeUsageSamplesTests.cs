@@ -153,6 +153,46 @@ end
         }
 
         /// <summary>
+        /// RbEngine.Require 加载 Ruby feature
+        /// <para>覆盖 require 成功加载、重复加载返回 false，以及 rb_protect 将 Ruby require 异常转换为 CLR 异常</para>
+        /// </summary>
+        [RubyRuntimeFact]
+        public void RbEngine_Require_ShowFeatureLoadAndRubyErrorUsage()
+        {
+            EnsureRuby();
+
+            var moduleName = "RubyCoreRequiredFileSample" + Guid.NewGuid().ToString("N");
+            var scriptPath = Path.Combine(Path.GetTempPath(), moduleName + ".rb");
+            var rubyFeaturePath = scriptPath.Replace(Path.DirectorySeparatorChar, '/');
+
+            try
+            {
+                // require 走 Ruby 的 feature 加载机制；这里使用唯一临时文件，避免标准库已加载导致返回值不稳定
+                File.WriteAllText(scriptPath, $@"
+module {moduleName}
+  def self.value
+    123
+  end
+end
+", System.Text.Encoding.UTF8);
+
+                Assert.True(RbEngine.Require(rubyFeaturePath));
+                Assert.Equal(123, RbEngine.Exec($"{moduleName}.value").As<int>());
+
+                // Ruby require 对同一个 feature 只加载一次，重复加载会返回 false
+                Assert.False(RbEngine.Require(rubyFeaturePath));
+
+                // Require 内部使用 rb_protect 包住 rb_require，因此 Ruby LoadError 会转换成 CLR Exception
+                var exception = Assert.Throws<Exception>(() => RbEngine.Require(moduleName + "_missing_feature"));
+                Assert.Contains(moduleName + "_missing_feature", exception.Message);
+            }
+            finally
+            {
+                if (File.Exists(scriptPath)) File.Delete(scriptPath);
+            }
+        }
+
+        /// <summary>
         /// Ruby 基础值包装类型的创建和使用
         /// <para>覆盖 RbString、RbBool、RbInt、RbFloat、RbSymbol、Ruby 方法调用、数值运算符和 dynamic 运算</para>
         /// </summary>

@@ -153,6 +153,21 @@ namespace RubyCore
         internal static void rb_load_protect(VALUE filePath, int wrap, out int state) => Delegates.rb_load_protect(filePath, wrap, out state);
 
         /// <summary>
+        /// 以保护模式调用 Ruby C API
+        /// </summary>
+        internal static VALUE rb_protect(Delegates.Delegate_rb_protect_func proc, VALUE data, out int state) => Delegates.rb_protect(proc, data, out state);
+
+        /// <summary>
+        /// 加载 Ruby feature
+        /// </summary>
+        internal static VALUE rb_require(IntPtr feature) => Delegates.rb_require(feature);
+
+        /// <summary>
+        /// 以保护模式加载 Ruby feature
+        /// </summary>
+        internal static VALUE rb_require_protect(VALUE feature, out int state) => rb_protect(RequireProtectFunc, feature, out state);
+
+        /// <summary>
         /// 调用 Ruby 的 p 输出对象
         /// </summary>
         internal static void rb_p(VALUE obj) => Delegates.rb_p(obj);
@@ -393,6 +408,12 @@ namespace RubyCore
 
         #endregion
 
+        private static readonly Delegates.Delegate_rb_protect_func RequireProtectFunc = data => {
+            var feature = data;
+            var featurePtr = rb_string_value_cstr(ref feature);
+            return rb_require(featurePtr);
+        };
+
         #region 初始化委托
         internal static class Delegates
         {
@@ -413,6 +434,8 @@ namespace RubyCore
                 rb_eval_string = WindowsLoader.GetFuncByName<Delegate_rb_eval_string>(nameof(rb_eval_string), _ApiDll);
                 rb_eval_string_protect = WindowsLoader.GetFuncByName<Delegate_rb_eval_string_protect>(nameof(rb_eval_string_protect), _ApiDll);
                 rb_load_protect = WindowsLoader.GetFuncByName<Delegate_rb_load_protect>(nameof(rb_load_protect), _ApiDll);
+                rb_protect = WindowsLoader.GetFuncByName<Delegate_rb_protect>(nameof(rb_protect), _ApiDll);
+                rb_require = WindowsLoader.GetFuncByName<Delegate_rb_require>(nameof(rb_require), _ApiDll);
                 rb_p = WindowsLoader.GetFuncByName<Delegate_rb_p>(nameof(rb_p), _ApiDll);
                 rb_io_puts = WindowsLoader.GetFuncByName<Delegate_rb_io_puts>(nameof(rb_io_puts), _ApiDll);
                 #endregion
@@ -503,6 +526,14 @@ namespace RubyCore
             internal static Delegate_rb_eval_string_protect rb_eval_string_protect;
             internal delegate void Delegate_rb_load_protect(VALUE filePath, int wrap, out int state);
             internal static Delegate_rb_load_protect rb_load_protect;
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate VALUE Delegate_rb_protect_func(VALUE data);
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate VALUE Delegate_rb_protect(Delegate_rb_protect_func proc, VALUE data, out int state);
+            internal static Delegate_rb_protect rb_protect;
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate VALUE Delegate_rb_require(IntPtr feature);
+            internal static Delegate_rb_require rb_require;
             internal delegate VALUE Delegate_rb_p(VALUE obj);
             internal static Delegate_rb_p rb_p;
             internal delegate VALUE Delegate_rb_io_puts(int argc, IntPtr[] argv, VALUE io);

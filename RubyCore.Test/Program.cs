@@ -31,6 +31,9 @@ namespace RubyCore.Test
                 var hostDir = @"C:\Program Files\SketchUp\SketchUp 2018";
                 var dllPath = Path.Combine(hostDir, "x64-msvcrt-ruby220.dll");
 
+                //hostDir = @"C:\Program Files (x86)\SketchUp\SketchUp 2013";
+                //dllPath = Path.Combine(hostDir, "msvcrt-ruby18.dll");
+
                 //RbEngine.Initialize(DllPath);
                 RbEngine.Initialize();
 
