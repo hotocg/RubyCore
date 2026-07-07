@@ -51,12 +51,10 @@ namespace RubyCore.Test
                 //Console.WriteLine(v.to_s);
 
                 // ==================================================
+                Console.WriteLine($"[{RbEngine.LoadPath.Length}] {string.Join(";", RbEngine.LoadPath)}");
                 RbEngine.AddLoadPath(Path.Combine(hostDir, @"Tools\RubyStdLib"));
                 RbEngine.AddLoadPath(Path.Combine(hostDir, @"Tools\RubyStdLib\platform_specific"));
-
-                RbEngine.Exec("puts $LOAD_PATH");
-                RbEngine.Exec("puts $LOADED_FEATURES");
-                //var requireResult = RbEngine.Require(json);
+                Console.WriteLine($"[{RbEngine.LoadPath.Length}] {string.Join(";", RbEngine.LoadPath)}");
                 var requireResult = RbEngine.Require("json", "JSON", out var Json);
                 Console.WriteLine(((dynamic)Json).generate(new RbArray(1, "2")));
                 //var requireResult = RbEngine.Require("json");

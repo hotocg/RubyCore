@@ -125,6 +125,11 @@ namespace RubyCore
             // }
         }
 
+        /// <summary>
+        /// 获取 Ruby 加载路径
+        /// </summary>
+        internal static VALUE LoadPath => rb_gv_get("$LOAD_PATH");
+
         // ==================================================
         #region Api
 

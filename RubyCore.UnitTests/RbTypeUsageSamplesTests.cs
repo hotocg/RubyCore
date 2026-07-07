@@ -191,6 +191,9 @@ end
 
                 // feature 名和顶层常量名完全一致时，可以使用默认 out 重载
                 RbEngine.AddLoadPath(Path.GetTempPath());
+                var tempLoadPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
+                var loadPaths = RbEngine.LoadPath.Select(path => path.TrimEnd('/', '\\')).ToArray();
+                Assert.Contains(tempLoadPath, loadPaths);
                 Assert.True(RbEngine.Require(sameNameModuleName, out var sameNameModule));
                 Assert.Equal(456, sameNameModule.Invoke("value").As<int>());
 

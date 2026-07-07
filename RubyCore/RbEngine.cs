@@ -118,8 +118,6 @@ namespace RubyCore
         /// <returns></returns>
         public static RbObject Exec(string code)
         {
-            Runtime.AutoInit();
-
             //var result = Runtime.rb_eval_string(new StrPtr(code));
             var result = Runtime.rb_eval_string_protect(new StrPtr(code), out int state);
             if (state != 0) RbException.CatchThrowToCLR();
@@ -133,8 +131,6 @@ namespace RubyCore
         /// <param name="values"></param>
         public static void Print(params object[] values)
         {
-            Runtime.AutoInit();
-
             var info = string.Join(" ", values.Select(v => v?.ToString() ?? "Nil"));
             var rbStr = new RbString(info);
 
@@ -177,6 +173,11 @@ namespace RubyCore
 
             Runtime.AddLoadPath(fullPath);
         }
+
+        /// <summary>
+        /// 获取 Ruby feature 搜索目录
+        /// </summary>
+        public static string[] LoadPath => new RbArray(Runtime.LoadPath).As<string[]>();
 
         /// <summary>
         /// 加载 Ruby feature
