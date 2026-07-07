@@ -399,6 +399,7 @@ end
                 ["x"] = 1,
                 ["y"] = "two"
             }).AsRbHash();
+            dynamic dynamicArray = rubyArray;
 
             Assert.Equal("abc", rubyString.As<string>());
             Assert.Equal(42, rubyInt.As<int>());
@@ -416,6 +417,7 @@ end
             Assert.IsType<RbBool>(rubyBool.AsRbBool());
             Assert.IsType<RbHash>(rubyHash.AsRbHash());
             Assert.IsType<RbIterable>(rubyArray.AsRbIterable());
+            Assert.Equal(new[] { 1, 2, 3 }, ((RbIterable)dynamicArray.AsRbIterable()).Select(item => item.As<int>()).ToArray());
         }
 
         /// <summary>

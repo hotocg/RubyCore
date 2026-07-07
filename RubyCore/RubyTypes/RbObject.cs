@@ -419,6 +419,70 @@ namespace RubyCore
         {
             return (T)As(typeof(T));
         }
+
+        /// <summary>
+        /// 转为 Ruby 数组包装
+        /// </summary>
+        public RbArray AsRbArray()
+        {
+            return new RbArray(this.Ref);
+        }
+
+        /// <summary>
+        /// 转为 Ruby 布尔值包装
+        /// </summary>
+        public RbBool AsRbBool()
+        {
+            return new RbBool(this.Ref);
+        }
+
+        /// <summary>
+        /// 转为 Ruby 浮点数包装
+        /// </summary>
+        public RbFloat AsRbFloat()
+        {
+            return new RbFloat(this.Ref);
+        }
+
+        /// <summary>
+        /// 转为 Ruby 哈希包装
+        /// </summary>
+        public RbHash AsRbHash()
+        {
+            return new RbHash(this.Ref);
+        }
+
+        /// <summary>
+        /// 转为 Ruby 整数包装
+        /// </summary>
+        public RbInt AsRbInt()
+        {
+            return new RbInt(this.Ref);
+        }
+
+        /// <summary>
+        /// 转为 Ruby 可迭代对象包装
+        /// </summary>
+        public RbIterable AsRbIterable()
+        {
+            return new RbIterable(this.Ref);
+        }
+
+        /// <summary>
+        /// 转为 Ruby 字符串包装
+        /// </summary>
+        public RbString AsRbString()
+        {
+            return new RbString(this.Ref);
+        }
+
+        /// <summary>
+        /// 转为 Ruby Symbol 包装
+        /// </summary>
+        public RbSymbol AsRbSymbol()
+        {
+            return new RbSymbol(this.Ref);
+        }
         #endregion
 
         #region 动态对象
