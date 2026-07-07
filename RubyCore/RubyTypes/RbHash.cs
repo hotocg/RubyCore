@@ -12,7 +12,7 @@ namespace RubyCore
         {
         }
 
-        public RbHash() : base(RbEngine.Exec("{}").Ref)
+        public RbHash() : base(Runtime.rb_hash_new())
         {
         }
 
@@ -34,11 +34,30 @@ namespace RubyCore
         }
 
         /// <summary>
+        /// 获取指定键的值
+        /// </summary>
+        public override RbObject GetItem(params RbObject[] keys)
+        {
+            if (keys is null || keys.Length != 1) return base.GetItem(keys);
+
+            return Runtime.rb_hash_aref(this.Ref, keys[0].Ref).Obj;
+        }
+
+        /// <summary>
+        /// 设置指定键的值
+        /// </summary>
+        public override RbObject SetItem(RbObject key, RbObject value)
+        {
+            return Runtime.rb_hash_aset(this.Ref, key.Ref, value.Ref).Obj;
+        }
+
+        /// <summary>
         /// 判断是否包含指定键
         /// </summary>
         public bool HasKey(object key)
         {
-            return Invoke("key?", key).As<bool>();
+            var rbKey = RbConverter.ToRubyValue(key);
+            return Runtime.rb_hash_has_key(this.Ref, rbKey.Ref).Obj.As<bool>();
         }
 
         /// <summary>
@@ -46,7 +65,7 @@ namespace RubyCore
         /// </summary>
         public RbArray Keys()
         {
-            return new RbArray(Invoke("keys").Ref);
+            return new RbArray(Runtime.rb_hash_keys(this.Ref));
         }
 
         /// <summary>
@@ -54,7 +73,7 @@ namespace RubyCore
         /// </summary>
         public RbArray Values()
         {
-            return new RbArray(Invoke("values").Ref);
+            return new RbArray(Runtime.rb_hash_values(this.Ref));
         }
     }
 }

@@ -268,6 +268,16 @@ namespace RubyCore
         internal static ID rb_intern(string name) => Delegates.rb_intern(name);
 
         /// <summary>
+        /// ID 转 Ruby Symbol 对象
+        /// </summary>
+        internal static VALUE rb_id2sym(ID id) => Delegates.rb_id2sym(id);
+
+        /// <summary>
+        /// Ruby Symbol 对象转 ID
+        /// </summary>
+        internal static ID rb_sym2id(VALUE symbol) => Delegates.rb_sym2id(symbol);
+
+        /// <summary>
         /// 调用对象方法
         /// </summary>
         internal static VALUE rb_funcall(VALUE recv, ID mid, params VALUE[] argv) => Delegates.rb_funcall(recv, mid, argv.Length, argv);
@@ -322,6 +332,49 @@ namespace RubyCore
         /// 向 Ruby 数组追加元素
         /// </summary>
         internal static VALUE rb_ary_push(VALUE array, VALUE value) => Delegates.rb_ary_push(array, value);
+
+        /// <summary>
+        /// 获取 Ruby 数组指定索引的元素
+        /// </summary>
+        internal static VALUE rb_ary_entry(VALUE array, long index) => Delegates.rb_ary_entry(array, index);
+
+        /// <summary>
+        /// 设置 Ruby 数组指定索引的元素
+        /// </summary>
+        internal static void rb_ary_store(VALUE array, long index, VALUE value) => Delegates.rb_ary_store(array, index, value);
+        #endregion
+
+        #region 哈希
+        /// <summary>
+        /// 创建 Ruby 哈希
+        /// </summary>
+        internal static VALUE rb_hash_new() => Delegates.rb_hash_new();
+
+        /// <summary>
+        /// 获取 Ruby 哈希指定键的值
+        /// </summary>
+        internal static VALUE rb_hash_aref(VALUE hash, VALUE key) => Delegates.rb_hash_aref(hash, key);
+
+        /// <summary>
+        /// 设置 Ruby 哈希指定键的值
+        /// </summary>
+        internal static VALUE rb_hash_aset(VALUE hash, VALUE key, VALUE value) => Delegates.rb_hash_aset(hash, key, value);
+
+        /// <summary>
+        /// 判断 Ruby 哈希是否包含指定键
+        /// </summary>
+        internal static VALUE rb_hash_has_key(VALUE hash, VALUE key) => Delegates.rb_hash_has_key(hash, key);
+
+        /// <summary>
+        /// 获取 Ruby 哈希键数组
+        /// </summary>
+        internal static VALUE rb_hash_keys(VALUE hash) => Delegates.rb_hash_keys(hash);
+
+        /// <summary>
+        /// 获取 Ruby 哈希值数组
+        /// </summary>
+        internal static VALUE rb_hash_values(VALUE hash) => Delegates.rb_hash_values(hash);
+
         #endregion
 
         #region 类
@@ -392,6 +445,8 @@ namespace RubyCore
 
                 #region 调用
                 rb_intern = WindowsLoader.GetFuncByName<Delegate_rb_intern>(nameof(rb_intern), _ApiDll);
+                rb_id2sym = WindowsLoader.GetFuncByName<Delegate_rb_id2sym>(nameof(rb_id2sym), _ApiDll);
+                rb_sym2id = WindowsLoader.GetFuncByName<Delegate_rb_sym2id>(nameof(rb_sym2id), _ApiDll);
                 rb_funcall = WindowsLoader.GetFuncByName<Delegate_rb_funcall>(nameof(rb_funcall), _ApiDll);
                 rb_funcallv = WindowsLoader.GetFuncByName<Delegate_rb_funcallv>(nameof(rb_funcallv), _ApiDll);
                 #endregion
@@ -404,6 +459,17 @@ namespace RubyCore
                 #region 数组
                 rb_ary_new = WindowsLoader.GetFuncByName<Delegate_rb_ary_new>(nameof(rb_ary_new), _ApiDll);
                 rb_ary_push = WindowsLoader.GetFuncByName<Delegate_rb_ary_push>(nameof(rb_ary_push), _ApiDll);
+                rb_ary_entry = WindowsLoader.GetFuncByName<Delegate_rb_ary_entry>(nameof(rb_ary_entry), _ApiDll);
+                rb_ary_store = WindowsLoader.GetFuncByName<Delegate_rb_ary_store>(nameof(rb_ary_store), _ApiDll);
+                #endregion
+
+                #region 哈希
+                rb_hash_new = WindowsLoader.GetFuncByName<Delegate_rb_hash_new>(nameof(rb_hash_new), _ApiDll);
+                rb_hash_aref = WindowsLoader.GetFuncByName<Delegate_rb_hash_aref>(nameof(rb_hash_aref), _ApiDll);
+                rb_hash_aset = WindowsLoader.GetFuncByName<Delegate_rb_hash_aset>(nameof(rb_hash_aset), _ApiDll);
+                rb_hash_has_key = WindowsLoader.GetFuncByName<Delegate_rb_hash_has_key>(nameof(rb_hash_has_key), _ApiDll);
+                rb_hash_keys = WindowsLoader.GetFuncByName<Delegate_rb_hash_keys>(nameof(rb_hash_keys), _ApiDll);
+                rb_hash_values = WindowsLoader.GetFuncByName<Delegate_rb_hash_values>(nameof(rb_hash_values), _ApiDll);
                 #endregion
 
                 #region 类
@@ -487,6 +553,10 @@ namespace RubyCore
             #region 调用
             internal delegate ID Delegate_rb_intern(string name);
             internal static Delegate_rb_intern rb_intern;
+            internal delegate VALUE Delegate_rb_id2sym(ID id);
+            internal static Delegate_rb_id2sym rb_id2sym;
+            internal delegate ID Delegate_rb_sym2id(VALUE symbol);
+            internal static Delegate_rb_sym2id rb_sym2id;
             internal delegate VALUE Delegate_rb_funcall(VALUE recv, ID mid, int argc, params VALUE[] argv);
             internal static Delegate_rb_funcall rb_funcall;
             internal delegate VALUE Delegate_rb_funcallv(VALUE recv, ID mid, int argc, IntPtr argv);
@@ -505,6 +575,25 @@ namespace RubyCore
             internal static Delegate_rb_ary_new rb_ary_new;
             internal delegate VALUE Delegate_rb_ary_push(VALUE array, VALUE value);
             internal static Delegate_rb_ary_push rb_ary_push;
+            internal delegate VALUE Delegate_rb_ary_entry(VALUE array, long index);
+            internal static Delegate_rb_ary_entry rb_ary_entry;
+            internal delegate void Delegate_rb_ary_store(VALUE array, long index, VALUE value);
+            internal static Delegate_rb_ary_store rb_ary_store;
+            #endregion
+
+            #region 哈希
+            internal delegate VALUE Delegate_rb_hash_new();
+            internal static Delegate_rb_hash_new rb_hash_new;
+            internal delegate VALUE Delegate_rb_hash_aref(VALUE hash, VALUE key);
+            internal static Delegate_rb_hash_aref rb_hash_aref;
+            internal delegate VALUE Delegate_rb_hash_aset(VALUE hash, VALUE key, VALUE value);
+            internal static Delegate_rb_hash_aset rb_hash_aset;
+            internal delegate VALUE Delegate_rb_hash_has_key(VALUE hash, VALUE key);
+            internal static Delegate_rb_hash_has_key rb_hash_has_key;
+            internal delegate VALUE Delegate_rb_hash_keys(VALUE hash);
+            internal static Delegate_rb_hash_keys rb_hash_keys;
+            internal delegate VALUE Delegate_rb_hash_values(VALUE hash);
+            internal static Delegate_rb_hash_values rb_hash_values;
             #endregion
 
             #region 类

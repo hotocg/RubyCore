@@ -95,9 +95,18 @@ namespace RubyCore.Test
                 //    Console.WriteLine($"Invoke CLR 捕获: {ex.Message}");
                 //}
 
-
+                var ary = new RbArray(1, 2);
+                foreach (var item in ary)
+                {
+                    Console.WriteLine(item);
+                }
                 Console.WriteLine($"Invoke: {((dynamic)module).Test2(1)}");
 
+                //var strary = new RbString("678");
+                //foreach (var item in strary)
+                //{
+                //    Console.WriteLine(item);
+                //}
                 return;
 
                 Console.WriteLine(new RbInt(100) + new RbInt(200));

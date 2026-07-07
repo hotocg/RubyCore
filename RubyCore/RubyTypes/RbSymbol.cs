@@ -9,8 +9,13 @@ namespace RubyCore
         {
         }
 
-        public RbSymbol(string name) : base(new RbString(name).Invoke("to_sym").Ref)
+        public RbSymbol(string name) : base(Runtime.rb_id2sym(Runtime.rb_intern(name)))
         {
         }
+
+        /// <summary>
+        /// Symbol 对应的 Ruby ID
+        /// </summary>
+        public ID Id => Runtime.rb_sym2id(this.Ref);
     }
 }

@@ -67,12 +67,25 @@ namespace RubyCore
         {
             Qfalse = new RbObject(0x00);
             
-            // 2.x 版本是 0x08，3.x 版本是 0x04
-            //Qnil = new RbObject(0x08);
-            Qnil = RbEngine.Exec("nil");
+            Qnil = new RbObject(GetQnil());
 
             Qtrue = new RbObject(0x14);
             Qundef = new RbObject(0x34);
+        }
+
+        private static VALUE GetQnil()
+        {
+            try
+            {
+                var value = WindowsLoader.GetValueByName("Qnil", Runtime._ApiDll);
+                if (!value.IsNull) return value;
+            }
+            catch
+            {
+            }
+
+            // Ruby 2.x 使用 0x08，Ruby 3.x 使用 0x04，或者用 RbEngine.Exec("nil")
+            return new VALUE(Runtime._ApiVersion.Major >= 3 ? 0x04 : 0x08);
         }
 
     }
