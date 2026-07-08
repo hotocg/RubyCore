@@ -57,8 +57,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 添加元素
-        /// <para>等价于 Ruby 的 add</para>
+        /// <inheritdoc cref="Add(RbObject)"/>
         /// </summary>
         public RbSet Add(object value)
         {

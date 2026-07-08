@@ -137,12 +137,19 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 调用当前对象的方法
-        /// <para>参数会先转换为 Ruby 对象</para>
+        /// <inheritdoc cref="InvokeMethod(string, RbObject[])"/>
         /// </summary>
         public RbObject InvokeMethod(string methodName, params object[] args)
         {
             return InvokeMethod(methodName, args.Select(RbConverter.ToRubyValue).ToArray());
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="InvokeMethod(string, RbObject[])"/>
+        /// </summary>
+        public T InvokeMethod<T>(string methodName, params object[] args)
+        {
+            return InvokeMethod(methodName, args).As<T>();
         }
 
         /// <summary>
@@ -155,12 +162,19 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 调用对象自身，等价于 Ruby 的 call
-        /// <para>参数会先转换为 Ruby 对象</para>
+        /// <inheritdoc cref="Invoke(RbObject[])"/>
         /// </summary>
         public RbObject Invoke(params object[] args)
         {
             return InvokeMethod("call", args);
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="Invoke(RbObject[])"/>
+        /// </summary>
+        public T Invoke<T>(params object[] args)
+        {
+            return Invoke(args).As<T>();
         }
 
         /// <summary>
@@ -206,11 +220,19 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 读取索引项
+        /// <inheritdoc cref="GetItem(RbObject[])"/>
         /// </summary>
         public virtual RbObject GetItem(params object[] keys)
         {
             return GetItem(keys.Select(RbConverter.ToRubyValue).ToArray());
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="GetItem(RbObject[])"/>
+        /// </summary>
+        public virtual T GetItem<T>(params object[] keys)
+        {
+            return GetItem(keys).As<T>();
         }
 
         /// <summary>
@@ -222,7 +244,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 设置索引项
+        /// <inheritdoc cref="SetItem(RbObject, RbObject)"/>
         /// </summary>
         public virtual RbObject SetItem(object key, object value)
         {
@@ -267,7 +289,7 @@ namespace RubyCore
 
         #region 属性访问
         /// <summary>
-        /// 判断对象是否响应指定方法
+        /// <inheritdoc cref="RespondTo(string)"/>
         /// </summary>
         public bool HasAttr(string name)
         {
@@ -289,6 +311,14 @@ namespace RubyCore
         public RbObject GetAttr(string name)
         {
             return InvokeMethod(name);
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="GetAttr(string)"/>
+        /// </summary>
+        public T GetAttr<T>(string name)
+        {
+            return GetAttr(name).As<T>();
         }
 
         /// <summary>
@@ -368,8 +398,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 判断对象是否属于指定类或模块
-        /// <para>等价于 Ruby 的 kind_of?</para>
+        /// <inheritdoc cref="IsA(object)"/>
         /// </summary>
         public bool KindOf(object klass)
         {
@@ -446,7 +475,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 转为托管对象
+        /// <inheritdoc cref="As(Type)"/>
         /// </summary>
         public T As<T>()
         {

@@ -89,7 +89,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// <inheritdoc cref="Runtime.Initialize"/>
+        /// <inheritdoc cref="Initialize()"/>
         /// </summary>
         public static void Initialize(string dllPath)
         {
@@ -130,6 +130,14 @@ namespace RubyCore
             if (state != 0) RbException.CatchThrowToCLR();
 
             return result.Obj;
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="Exec(string)"/>
+        /// </summary>
+        public static T Exec<T>(string code)
+        {
+            return Exec(code).As<T>();
         }
 
         /// <summary>
@@ -214,8 +222,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 定义不返回值的 Ruby 全局函数
-        /// <para>委托执行完成后自动向 Ruby 返回 nil</para>
+        /// <inheritdoc cref="DefineGlobalFunction(string, Func{RbObject, RbObject[], RbObject})"/>
         /// </summary>
         /// <param name="name">函数名称</param>
         /// <param name="action">函数委托</param>
@@ -263,7 +270,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 加载 Ruby feature 并获取指定常量
+        /// <inheritdoc cref="Require(string)"/>
         /// </summary>
         /// <param name="feature">Ruby feature 名称，例如 set 或 json</param>
         /// <param name="constantName">加载后要获取的顶层常量名称，例如 Set 或 JSON</param>
@@ -277,7 +284,6 @@ namespace RubyCore
 
         /// <summary>
         /// <inheritdoc cref="Require(string, string, out RbObject)"/>
-        /// <para>用于显式声明 out dynamic 或其他兼容托管类型的场景</para>
         /// </summary>
         public static bool Require<T>(string feature, string constantName, out T constant)
         {
@@ -287,7 +293,7 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 加载 Ruby feature 并按同名常量获取对象
+        /// <inheritdoc cref="Require(string, string, out RbObject)"/>
         /// </summary>
         public static bool Require(string feature, out RbObject constant)
         {
@@ -296,7 +302,6 @@ namespace RubyCore
 
         /// <summary>
         /// <inheritdoc cref="Require(string, out RbObject)"/>
-        /// <para>用于显式声明 out dynamic 或其他兼容托管类型的场景</para>
         /// </summary>
         public static bool Require<T>(string feature, out T constant)
         {

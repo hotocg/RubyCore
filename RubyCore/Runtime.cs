@@ -215,7 +215,7 @@ namespace RubyCore
         internal static VALUE rb_protect(Delegates.Delegate_rb_protect_func proc, VALUE data, out int state) => Delegates.rb_protect(proc, data, out state);
 
         /// <summary>
-        /// 加载 Ruby feature
+        /// 调用 Ruby C API rb_require
         /// </summary>
         internal static VALUE rb_require(IntPtr feature) => Delegates.rb_require(feature);
 

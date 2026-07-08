@@ -185,6 +185,13 @@ end
             Assert.Equal("Alice:18", dynamicNamedArgs.As<string>());
             Assert.Equal("RubyCoreSampleUser::Address", dynamicNestedConstant.InvokeMethod("name").As<string>());
             Assert.Equal("CN", dynamicAssignedConstant.As<string>());
+
+            // 泛型入口用于直接拿到期望的包装类型或 CLR 类型，改善静态类型提示
+            var genericArray = RbEngine.Exec<RbArray>("[1, 2, 3]");
+            Assert.Equal(3, genericArray.Length());
+            Assert.Equal("Jerry", user.GetAttr<string>("name"));
+            Assert.Equal("Hello, Jerry", user.InvokeMethod<string>("greet", "Hello"));
+            Assert.Equal("changed", user.GetItem<string>(1));
         }
 
         /// <summary>
@@ -657,6 +664,7 @@ end
             // Invoke(params object[]) 用于调用对象自身，等价于 Ruby 的 call
             var proc = RbEngine.Exec("Proc.new { |value| value * 2 }");
             Assert.Equal(10, proc.Invoke(5).As<int>());
+            Assert.Equal(14, proc.Invoke<int>(7));
 
             // dynamic 对象自身调用也会映射到 Ruby 的 call
             dynamic dynamicProc = proc;

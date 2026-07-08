@@ -71,7 +71,8 @@ namespace RubyCore
         //public void DefineFunction(string name, Func<VALUE, VALUE, VALUE> func) => Register(name, func, 1);
 
         /// <summary>
-        /// <inheritdoc cref="RegisterFunc"/> 返回值
+        /// 定义 Ruby 模块函数
+        /// <para>Ruby 调用该函数时会进入 C# 委托，CLR 异常会转换为 Ruby 异常</para>
         /// </summary>
         /// <param name="name">函数名称</param>
         /// <param name="func">函数</param>
@@ -81,15 +82,8 @@ namespace RubyCore
         }
 
         /// <summary>
-        /// 在 Ruby 模块中定义一个不返回值的模块方法 (void)
-        /// 包装器内部会自动向 Ruby 解释器返回 Qnil 以确保栈平衡
+        /// <inheritdoc cref="DefineFunction(string, Func{RbObject, RbObject[], RbObject})"/>
         /// </summary>
-        /// <param name="name">方法名</param>
-        /// <param name="action">
-        /// C# 委托逻辑：
-        /// 参数 1 (RbObject): Ruby 的 self 对象
-        /// 参数 2 (RbObject[]): 传入的参数数组
-        /// </param>
         public void DefineFunction(string name, Action<RbObject, RbObject[]> action)
         {
             RegisterFunc(name, RbCallback.Create(action), -1);
