@@ -477,6 +477,14 @@ namespace RubyCore
         }
 
         /// <summary>
+        /// 转为 Ruby Set 包装
+        /// </summary>
+        public RbSet AsRbSet()
+        {
+            return new RbSet(this.Ref);
+        }
+
+        /// <summary>
         /// 转为 Ruby Symbol 包装
         /// </summary>
         public RbSymbol AsRbSymbol()

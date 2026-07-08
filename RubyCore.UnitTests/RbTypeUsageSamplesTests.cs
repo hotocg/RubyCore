@@ -44,6 +44,73 @@ namespace RubyCore.UnitTests
             RbEngine.Initialize();
         }
 
+        private static void EnsureRubySetFeature()
+        {
+            try
+            {
+                RbEngine.Require("set");
+                return;
+            }
+            catch (Exception)
+            {
+                // 某些宿主只提供 Ruby DLL，未提供完整标准库路径；样例测试补一个最小 set.rb 验证包装层行为
+            }
+
+            var setFeatureDir = Path.Combine(Path.GetTempPath(), "RubyCoreUnitTestsRubyStdLib");
+            var setFeaturePath = Path.Combine(setFeatureDir, "set.rb");
+            Directory.CreateDirectory(setFeatureDir);
+            File.WriteAllText(setFeaturePath, @"
+class Set
+  include Enumerable
+
+  def initialize(enum = nil)
+    @items = []
+    merge(enum) if enum
+  end
+
+  def add(value)
+    @items << value unless include?(value)
+    self
+  end
+
+  def merge(enum)
+    enum.each { |item| add(item) }
+    self
+  end
+
+  def delete(value)
+    @items.delete(value)
+    self
+  end
+
+  def clear
+    @items.clear
+    self
+  end
+
+  def include?(value)
+    @items.include?(value)
+  end
+
+  def empty?
+    @items.empty?
+  end
+
+  def length
+    @items.length
+  end
+
+  alias size length
+
+  def each(&block)
+    @items.each(&block)
+  end
+end
+", System.Text.Encoding.UTF8);
+            RbEngine.AddLoadPath(setFeatureDir);
+            RbEngine.Require("set");
+        }
+
         /// <summary>
         /// RbEngine.Exec 和 RbObject 的核心用法
         /// <para>覆盖 Ruby 脚本执行、对象创建、方法调用、属性访问、索引访问、类型转换以及 dynamic 命名参数调用</para>
@@ -379,6 +446,43 @@ end
         }
 
         /// <summary>
+        /// Ruby Set 的去重集合用法
+        /// <para>覆盖 RbSet 构造、Add、Include、Delete、Clear、foreach 读取以及 dynamic 类型化包装</para>
+        /// </summary>
+        [RubyRuntimeFact]
+        public void RbSet_ShowAddIncludeDeleteClearForeachAndDynamicConversionUsage()
+        {
+            EnsureRuby();
+            EnsureRubySetFeature();
+
+            var set = new RbSet("a", "b", "a");
+            set.Add("c");
+            set.Add("b");
+
+            Assert.Equal(3, set.Length());
+            Assert.True(set.Include("a"));
+            Assert.True(set.Include("b"));
+            Assert.True(set.Include("c"));
+
+            var values = set.Select(item => item.As<string>()).OrderBy(item => item).ToArray();
+            Assert.Equal(new[] { "a", "b", "c" }, values);
+
+            set.Delete("b");
+            Assert.False(set.Include("b"));
+            Assert.Equal(2, set.Length());
+
+            dynamic dynamicSet = RbEngine.Exec("Set.new(['x', 'y', 'x'])");
+            var typedSet = (RbSet)dynamicSet.AsRbSet();
+
+            Assert.Equal(2, typedSet.Length());
+            Assert.True(typedSet.Include("x"));
+            Assert.True(typedSet.Include("y"));
+
+            set.Clear();
+            Assert.True(set.IsEmpty());
+        }
+
+        /// <summary>
         /// CLR 与 Ruby 对象之间的映射转换
         /// <para>覆盖 ToRuby、RbConverter.ToRubyValue、As&lt;T&gt; 以及 AsRb* 类型化包装扩展</para>
         /// </summary>
@@ -386,6 +490,7 @@ end
         public void RbConverter_And_Extensions_ShowClrRubyMappingUsage()
         {
             EnsureRuby();
+            EnsureRubySetFeature();
 
             // ToRuby()/ToRubyValue 负责 CLR -> Ruby 的基础类型、数组和字典转换
             RbObject rubyString = "abc".ToRuby();
@@ -417,6 +522,7 @@ end
             Assert.IsType<RbBool>(rubyBool.AsRbBool());
             Assert.IsType<RbHash>(rubyHash.AsRbHash());
             Assert.IsType<RbIterable>(rubyArray.AsRbIterable());
+            Assert.IsType<RbSet>(RbEngine.Exec("Set.new").AsRbSet());
             Assert.Equal(new[] { 1, 2, 3 }, ((RbIterable)dynamicArray.AsRbIterable()).Select(item => item.As<int>()).ToArray());
         }
 

@@ -59,6 +59,14 @@ namespace RubyCore.Test
                 Console.WriteLine(((dynamic)Json).generate(new RbArray(1, "2")));
                 //var requireResult = RbEngine.Require("json");
 
+                var set = new RbSet();
+                set.Add("a");
+                set.Add(1);
+                foreach (var v in set)
+                {
+                    Console.WriteLine(v);
+                }
+
                 RbEngine.DefineGlobalFunction("Test", (self, args) =>
                 {
                     try
