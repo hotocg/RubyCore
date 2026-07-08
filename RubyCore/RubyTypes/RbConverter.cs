@@ -67,8 +67,11 @@ namespace RubyCore
                     return new RbFloat((double)value);
                 case TypeCode.Decimal:
                     return new RbFloat((double)(decimal)value);
+                case TypeCode.Object:
+                case TypeCode.DBNull:
+                case TypeCode.Empty:
                 default:
-                    return RbTypeMap.Qnil;
+                    throw new NotSupportedException($"不支持将 CLR 类型转换为 Ruby 对象: {objType.FullName}");
             }
         }
 
@@ -78,18 +81,41 @@ namespace RubyCore
         public static bool ToManagedValue(RbObject value, Type type, out object result)
         {
             result = null;
-            if (value is null || value.IsNil) return true;
+            type = type ?? typeof(object);
 
-            if (type.IsArray)
+            var nullableType = Nullable.GetUnderlyingType(type);
+            if (value is null || value.IsNil)
             {
-                var elementType = type.GetElementType();
+                if (type.IsValueType && nullableType is null)
+                {
+                    result = Activator.CreateInstance(type);
+                }
+
+                return true;
+            }
+
+            var targetType = nullableType ?? type;
+
+            if (targetType.IsInstanceOfType(value))
+            {
+                result = value;
+                return true;
+            }
+
+            if (targetType.IsArray)
+            {
+                var elementType = targetType.GetElementType();
                 var array = value.InvokeMethod("to_a");
                 var length = array.Length();
                 var managedArray = Array.CreateInstance(elementType, length);
 
                 for (int i = 0; i < length; i++)
                 {
-                    ToManagedValue(array.GetItem(i), elementType, out var item);
+                    if (!ToManagedValue(array.GetItem(i), elementType, out var item))
+                    {
+                        return false;
+                    }
+
                     managedArray.SetValue(item, i);
                 }
 
@@ -97,16 +123,20 @@ namespace RubyCore
                 return true;
             }
 
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
+            if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>))
             {
-                var elementType = type.GetGenericArguments()[0];
-                var list = (IList)Activator.CreateInstance(type);
+                var elementType = targetType.GetGenericArguments()[0];
+                var list = (IList)Activator.CreateInstance(targetType);
                 var array = value.InvokeMethod("to_a");
                 var length = array.Length();
 
                 for (int i = 0; i < length; i++)
                 {
-                    ToManagedValue(array.GetItem(i), elementType, out var item);
+                    if (!ToManagedValue(array.GetItem(i), elementType, out var item))
+                    {
+                        return false;
+                    }
+
                     list.Add(item);
                 }
 
@@ -114,20 +144,28 @@ namespace RubyCore
                 return true;
             }
 
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
             {
-                var genericArgs = type.GetGenericArguments();
+                var genericArgs = targetType.GetGenericArguments();
                 var keyType = genericArgs[0];
                 var valueType = genericArgs[1];
-                var dictionary = (IDictionary)Activator.CreateInstance(type);
+                var dictionary = (IDictionary)Activator.CreateInstance(targetType);
                 var pairs = value.InvokeMethod("to_a");
                 var length = pairs.Length();
 
                 for (int i = 0; i < length; i++)
                 {
                     var pair = pairs.GetItem(i);
-                    ToManagedValue(pair.GetItem(0), keyType, out var key);
-                    ToManagedValue(pair.GetItem(1), valueType, out var item);
+                    if (!ToManagedValue(pair.GetItem(0), keyType, out var key))
+                    {
+                        return false;
+                    }
+
+                    if (!ToManagedValue(pair.GetItem(1), valueType, out var item))
+                    {
+                        return false;
+                    }
+
                     dictionary.Add(key, item);
                 }
 
@@ -135,7 +173,7 @@ namespace RubyCore
                 return true;
             }
 
-            switch (Type.GetTypeCode(type))
+            switch (Type.GetTypeCode(targetType))
             {
                 case TypeCode.Boolean:
                     result = !value.IsNil && value.Pointer != RbTypeMap.Qfalse.Pointer;
@@ -177,8 +215,14 @@ namespace RubyCore
                     result = (decimal)Runtime.rb_num2dbl(value.Ref);
                     return true;
                 case TypeCode.Object:
-                    result = value;
-                    return true;
+                    if (targetType == typeof(object))
+                    {
+                        result = value;
+                        return true;
+                    }
+
+                    result = null;
+                    return false;
                 default:
                     return false;
             }

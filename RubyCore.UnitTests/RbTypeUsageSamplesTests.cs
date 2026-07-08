@@ -590,10 +590,16 @@ end
             RbObject rubyBool = true.ToRuby();
             RbObject rubyNil = RbConverter.ToRubyValue(null);
             var rubyArray = RbConverter.ToRubyValue(new[] { 1, 2, 3 }).AsRbArray();
+            var rubyList = RbConverter.ToRubyValue(new object?[] { "a", 2, null }).AsRbArray();
             var rubyHash = RbConverter.ToRubyValue(new Dictionary<string, object>
             {
                 ["x"] = 1,
                 ["y"] = "two"
+            }).AsRbHash();
+            var rubyObjectHash = RbConverter.ToRubyValue(new
+            {
+                title = "sample",
+                count = 3
             }).AsRbHash();
             dynamic dynamicArray = rubyArray;
 
@@ -602,9 +608,39 @@ end
             Assert.Equal(2.5, rubyFloat.As<double>(), 6);
             Assert.True(rubyBool.As<bool>());
             Assert.True(rubyNil.IsNil);
+            Assert.Null(rubyNil.As<string>());
+            Assert.Null(rubyNil.As<int?>());
+            Assert.Equal(0, rubyNil.As<int>());
+            Assert.False(rubyNil.As<bool>());
+            Assert.Equal(42, rubyInt.As<int?>());
             Assert.Equal(3, rubyArray.Length());
+            Assert.Equal("a", rubyList[0].As<string>());
+            Assert.Equal(2, rubyList[1].As<int>());
+            Assert.True(rubyList[2].IsNil);
             Assert.Equal(1, rubyHash["x"].As<int>());
             Assert.Equal("two", rubyHash["y"].As<string>());
+            Assert.Equal("sample", rubyObjectHash["title"].As<string>());
+            Assert.Equal(3, rubyObjectHash["count"].As<int>());
+
+            // 集合递归转换时，Ruby nil 会按元素目标类型转换为 null 或 default
+            var rubyArrayWithNil = RbEngine.Exec("[1, nil, 3]");
+            var nullableArray = rubyArrayWithNil.As<int?[]>();
+            var defaultArray = rubyArrayWithNil.As<int[]>();
+            var nullableList = rubyArrayWithNil.As<List<int?>>();
+            var rubyHashWithNil = RbEngine.Exec("{ 'empty' => nil, 'count' => 2 }");
+            var nullableDictionary = rubyHashWithNil.As<Dictionary<string, int?>>();
+
+            Assert.Equal(new int?[] { 1, null, 3 }, nullableArray);
+            Assert.Equal(new[] { 1, 0, 3 }, defaultArray);
+            Assert.Equal(new List<int?> { 1, null, 3 }, nullableList);
+            Assert.Null(nullableDictionary["empty"]);
+            Assert.Equal(2, nullableDictionary["count"]);
+
+            var invalidCastException = Assert.Throws<InvalidCastException>(() => rubyString.As<Guid>());
+            Assert.Contains(typeof(Guid).FullName ?? nameof(Guid), invalidCastException.Message);
+
+            var unsupportedTypeException = Assert.Throws<NotSupportedException>(() => RbConverter.ToRubyValue(new Uri("https://example.com")));
+            Assert.Contains(typeof(Uri).FullName ?? nameof(Uri), unsupportedTypeException.Message);
 
             // AsRb* 扩展用于把通用 RbObject 包装成更具体的 Ruby 类型包装
             Assert.IsType<RbString>(rubyString.AsRbString());
