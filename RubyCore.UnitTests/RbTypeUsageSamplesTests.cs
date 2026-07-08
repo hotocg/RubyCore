@@ -195,6 +195,90 @@ end
         }
 
         /// <summary>
+        /// 泛型入口的聚焦用法
+        /// <para>覆盖 Exec&lt;T&gt;、InvokeMethod&lt;T&gt;、Invoke&lt;T&gt;、GetAttr&lt;T&gt;、GetItem&lt;T&gt;、Require&lt;T&gt; 以及 dynamic 调用组合</para>
+        /// </summary>
+        [RubyRuntimeFact]
+        public void GenericEntrypoints_ShowTypedReturnAndDynamicUsage()
+        {
+            EnsureRuby();
+
+            var className = "RubyCoreGenericEntrypointSample" + Guid.NewGuid().ToString("N");
+            RbEngine.Exec($@"
+                class {className}
+                  attr_accessor :name
+
+                  def initialize
+                    @name = 'origin'
+                    @items = [10, 20, 30]
+                  end
+
+                  def add(left, right)
+                    left + right
+                  end
+
+                  def [](index)
+                    @items[index]
+                  end
+                end
+            ");
+
+            // Exec<T> 可以直接拿到期望的 Ruby 包装类型或 CLR 类型
+            var instance = RbEngine.Exec<RbObject>($"{className}.new");
+            var array = RbEngine.Exec<RbArray>("[1, 2, 3]");
+            var hash = RbEngine.Exec<RbHash>("{ 'name' => 'RubyCore', 'count' => 2 }");
+
+            Assert.Equal(3, array.Length());
+            Assert.Equal(new[] { 1, 2, 3 }, array.As<int[]>());
+            Assert.Equal("RubyCore", hash.GetItem<string>("name"));
+            Assert.Equal(2, hash.GetItem<int>("count"));
+
+            // RbObject 的泛型入口负责把 Ruby 返回值继续转成 CLR 类型
+            Assert.Equal("origin", instance.GetAttr<string>("name"));
+            instance.SetAttr("name", "typed");
+            Assert.Equal("typed", instance.GetAttr<string>("name"));
+            Assert.Equal(7, instance.InvokeMethod<int>("add", 3, 4));
+            Assert.Equal(20, instance.GetItem<int>(1));
+
+            var proc = RbEngine.Exec<RbObject>("Proc.new { |value| value + 5 }");
+            Assert.Equal(15, proc.Invoke<int>(10));
+
+            // dynamic 调用仍然返回 RbObject，可继续走 As<T> 或泛型入口配合使用
+            dynamic dynamicInstance = instance;
+            dynamicInstance.name = "dynamic";
+            RbObject dynamicName = dynamicInstance.name;
+            RbObject dynamicSum = dynamicInstance.add(6, 8);
+            RbObject dynamicItem = dynamicInstance[2];
+
+            Assert.Equal("dynamic", dynamicName.As<string>());
+            Assert.Equal(14, dynamicSum.As<int>());
+            Assert.Equal(30, dynamicItem.As<int>());
+
+            var moduleName = "RubyCoreGenericRequireSample" + Guid.NewGuid().ToString("N");
+            var scriptPath = Path.Combine(Path.GetTempPath(), moduleName + ".rb");
+            var rubyFeaturePath = scriptPath.Replace(Path.DirectorySeparatorChar, '/');
+
+            try
+            {
+                File.WriteAllText(scriptPath, $@"
+module {moduleName}
+  def self.value
+    321
+  end
+end
+", System.Text.Encoding.UTF8);
+
+                // Require<T> 适合 require 后立刻拿同名或指定常量并保留静态类型
+                Assert.True(RbEngine.Require<RbObject>(rubyFeaturePath, moduleName, out var requiredModule));
+                Assert.Equal(321, requiredModule.InvokeMethod<int>("value"));
+            }
+            finally
+            {
+                if (File.Exists(scriptPath)) File.Delete(scriptPath);
+            }
+        }
+
+        /// <summary>
         /// RbEngine.LoadFile 加载并执行 Ruby 脚本文件
         /// <para>覆盖文件路径加载、脚本定义内容生效，以及 rb_load_protect 将 Ruby 异常转换为 CLR 异常</para>
         /// </summary>
