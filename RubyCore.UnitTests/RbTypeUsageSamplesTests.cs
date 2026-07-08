@@ -524,6 +524,16 @@ end
             Assert.IsType<RbIterable>(rubyArray.AsRbIterable());
             Assert.IsType<RbSet>(RbEngine.Exec("Set.new").AsRbSet());
             Assert.Equal(new[] { 1, 2, 3 }, ((RbIterable)dynamicArray.AsRbIterable()).Select(item => item.As<int>()).ToArray());
+
+            // VALUE.Obj 会自动按 Ruby 真实类型选择具体包装，减少调用方手写 AsRb*
+            Assert.IsType<RbString>(RbEngine.Exec("'abc'"));
+            Assert.IsType<RbInt>(RbEngine.Exec("42"));
+            Assert.IsType<RbFloat>(RbEngine.Exec("2.5"));
+            Assert.IsType<RbBool>(RbEngine.Exec("true"));
+            Assert.IsType<RbSymbol>(RbEngine.Exec(":name"));
+            Assert.IsType<RbArray>(RbEngine.Exec("[1, 2, 3]"));
+            Assert.IsType<RbHash>(RbEngine.Exec("{ 'x' => 1 }"));
+            Assert.IsType<RbSet>(RbEngine.Exec("Set.new([1, 2, 1])"));
         }
 
         /// <summary>

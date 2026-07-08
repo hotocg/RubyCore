@@ -85,6 +85,7 @@ namespace RubyCore.Test
                 });
                 RbEngine.Exec("Test(1, '2')");
                 ((dynamic)RbEngine.GetGlobalFunction("Test"))(3, "4");
+                Console.WriteLine(RbEngine.Exec("'123'").GetType());
 
                 return;
                 var module = new RbModule("RbCore");

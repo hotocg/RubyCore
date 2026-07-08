@@ -11,7 +11,7 @@ namespace RubyCore
     {
         public IntPtr Pointer = IntPtr.Zero;
         public bool IsNull => Pointer == IntPtr.Zero;
-        public RbObject Obj => new RbObject(this);
+        public RbObject Obj => RbObject.Wrap(this);
 
         public VALUE(IntPtr pointer)
         {

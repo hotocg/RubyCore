@@ -53,6 +53,39 @@ namespace RubyCore
         }
 
         /// <summary>
+        /// 根据 Ruby 对象真实类型创建合适的包装对象
+        /// <para>用于让 Exec、InvokeMethod、GetItem 等返回值自动获得更具体的 Rb* 类型</para>
+        /// </summary>
+        public static RbObject Wrap(VALUE value)
+        {
+            if (value.IsNull) return new RbObject(value);
+            if (value.Pointer == RbTypeMap.Qnil.Pointer) return RbTypeMap.Qnil;
+            if (value.Pointer == RbTypeMap.Qtrue.Pointer || value.Pointer == RbTypeMap.Qfalse.Pointer) return new RbBool(value);
+
+            switch (Runtime.GetClassName(value))
+            {
+                case "Array":
+                    return new RbArray(value);
+                case "Hash":
+                    return new RbHash(value);
+                case "String":
+                    return new RbString(value);
+                case "Symbol":
+                    return new RbSymbol(value);
+                case "Float":
+                    return new RbFloat(value);
+                case "Fixnum":
+                case "Bignum":
+                case "Integer":
+                    return new RbInt(value);
+                case "Set":
+                    return new RbSet(value);
+                default:
+                    return new RbObject(value);
+            }
+        }
+
+        /// <summary>
         /// 转为 Ruby 字符串表示
         /// </summary>
         public override string ToString()

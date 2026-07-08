@@ -141,6 +141,21 @@ namespace RubyCore
 
         #endregion
 
+        #region 类型辅助
+
+        /// <summary>
+        /// 获取 Ruby 对象的类名
+        /// </summary>
+        internal static string GetClassName(VALUE value)
+        {
+            var klass = rb_obj_class(value);
+            var name = rb_class_name(klass);
+            var ptr = rb_string_value_cstr(ref name);
+            return StrPtr.PtrToString(ptr);
+        }
+
+        #endregion
+
         #region Api
 
         #region 引擎
