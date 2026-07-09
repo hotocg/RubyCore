@@ -131,7 +131,17 @@ namespace RubyCore
         {
             var methodId = Runtime.rb_intern(methodName);
             var result = Runtime.rb_funcallv_protect(this.Ref, methodId, args.Select(x => x.Ref).ToArray(), out int state);
-            if (state != 0) RbException.CatchThrowToCLR();
+            if (state != 0)
+            {
+                try
+                {
+                    RbException.CatchThrowToCLR();
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Ruby 方法调用失败: {Class}#{methodName}{Environment.NewLine}异常: {ex.Message.Trim()}", ex);
+                }
+            }
 
             return result.Obj;
         }
@@ -224,7 +234,7 @@ namespace RubyCore
         /// </summary>
         public virtual RbObject GetItem(params object[] keys)
         {
-            return GetItem(keys.Select(RbConverter.ToRubyValue).ToArray());
+            return InvokeMethod("[]", keys);
         }
 
         /// <summary>
@@ -248,7 +258,7 @@ namespace RubyCore
         /// </summary>
         public virtual RbObject SetItem(object key, object value)
         {
-            return SetItem(RbConverter.ToRubyValue(key), RbConverter.ToRubyValue(value));
+            return InvokeMethod("[]=", key, value);
         }
 
         /// <summary>
@@ -468,7 +478,7 @@ namespace RubyCore
         {
             if (!RbConverter.ToManagedValue(this, type ?? typeof(object), out var result))
             {
-                throw new InvalidCastException($"无法将 Ruby 对象转换为 {type?.FullName ?? "object"}");
+                throw new InvalidCastException($"无法将 Ruby 对象 ({this} : {Class}) 转换为 ({type?.FullName ?? "object"})");
             }
 
             return result;
@@ -597,7 +607,7 @@ namespace RubyCore
         /// </summary>
         public override bool TryInvoke(InvokeBinder binder, object[] args, out object result)
         {
-            result = Invoke(BuildDynamicInvokeArgs(binder.CallInfo, args));
+            result = InvokeMethod("call", BuildDynamicInvokeArgs(binder.CallInfo, args));
             return true;
         }
 
@@ -643,45 +653,43 @@ namespace RubyCore
         /// </summary>
         public override bool TryBinaryOperation(BinaryOperationBinder binder, object arg, out object result)
         {
-            var rbArg = RbConverter.ToRubyValue(arg);
-
             switch (binder.Operation)
             {
                 case ExpressionType.Add:
-                    result = InvokeMethod("+", rbArg);
+                    result = InvokeMethod("+", arg);
                     return true;
                 case ExpressionType.Subtract:
-                    result = InvokeMethod("-", rbArg);
+                    result = InvokeMethod("-", arg);
                     return true;
                 case ExpressionType.Multiply:
-                    result = InvokeMethod("*", rbArg);
+                    result = InvokeMethod("*", arg);
                     return true;
                 case ExpressionType.Divide:
-                    result = InvokeMethod("/", rbArg);
+                    result = InvokeMethod("/", arg);
                     return true;
                 case ExpressionType.Modulo:
-                    result = InvokeMethod("%", rbArg);
+                    result = InvokeMethod("%", arg);
                     return true;
                 case ExpressionType.LeftShift:
-                    result = InvokeMethod("<<", rbArg);
+                    result = InvokeMethod("<<", arg);
                     return true;
                 case ExpressionType.Equal:
-                    result = InvokeMethod("==", rbArg).As<bool>();
+                    result = InvokeMethod("==", arg).As<bool>();
                     return true;
                 case ExpressionType.NotEqual:
-                    result = !InvokeMethod("==", rbArg).As<bool>();
+                    result = !InvokeMethod("==", arg).As<bool>();
                     return true;
                 case ExpressionType.GreaterThan:
-                    result = InvokeMethod(">", rbArg).As<bool>();
+                    result = InvokeMethod(">", arg).As<bool>();
                     return true;
                 case ExpressionType.GreaterThanOrEqual:
-                    result = InvokeMethod(">=", rbArg).As<bool>();
+                    result = InvokeMethod(">=", arg).As<bool>();
                     return true;
                 case ExpressionType.LessThan:
-                    result = InvokeMethod("<", rbArg).As<bool>();
+                    result = InvokeMethod("<", arg).As<bool>();
                     return true;
                 case ExpressionType.LessThanOrEqual:
-                    result = InvokeMethod("<=", rbArg).As<bool>();
+                    result = InvokeMethod("<=", arg).As<bool>();
                     return true;
                 default:
                     result = null;

@@ -638,6 +638,7 @@ end
 
             var invalidCastException = Assert.Throws<InvalidCastException>(() => rubyString.As<Guid>());
             Assert.Contains(typeof(Guid).FullName ?? nameof(Guid), invalidCastException.Message);
+            Assert.Contains("abc : String", invalidCastException.Message);
 
             var unsupportedTypeException = Assert.Throws<NotSupportedException>(() => RbConverter.ToRubyValue(new Uri("https://example.com")));
             Assert.Contains(typeof(Uri).FullName ?? nameof(Uri), unsupportedTypeException.Message);
@@ -797,6 +798,33 @@ end
             // Exec 使用 protect API，Ruby raise 会被转换为 CLR Exception
             var exception = Assert.Throws<Exception>(() => RbEngine.Exec("raise 'sample error'"));
             Assert.Contains("sample error", exception.Message);
+
+            // InvokeMethod 是 Invoke、dynamic、索引和运算符等入口的核心，失败时应带上接收者和方法名
+            var text = RbEngine.Exec("'abc'");
+            var invokeException = Assert.Throws<Exception>(() => text.InvokeMethod("missing_method", 1, 2));
+            Assert.Contains("Ruby 方法调用失败", invokeException.Message);
+            Assert.Contains("String#missing_method", invokeException.Message);
+            Assert.Contains("undefined method", invokeException.Message);
+
+            var callException = Assert.Throws<Exception>(() => text.Invoke());
+            Assert.Contains("Ruby 方法调用失败", callException.Message);
+            Assert.Contains("String#call", callException.Message);
+
+            dynamic dynamicText = text;
+            var dynamicException = Assert.Throws<Exception>(() => dynamicText.missing_method(3));
+            Assert.Contains("Ruby 方法调用失败", dynamicException.Message);
+            Assert.Contains("String#missing_method", dynamicException.Message);
+
+            var dynamicCallException = Assert.Throws<Exception>(() => dynamicText());
+            Assert.Contains("Ruby 方法调用失败", dynamicCallException.Message);
+            Assert.Contains("String#call", dynamicCallException.Message);
+
+            var dynamicOperatorException = Assert.Throws<Exception>(() => dynamicText - 1);
+            Assert.Contains("Ruby 方法调用失败", dynamicOperatorException.Message);
+            Assert.Contains("String#-", dynamicOperatorException.Message);
+
+            var conversionException = Assert.Throws<NotSupportedException>(() => text.InvokeMethod("include?", new Uri("https://example.com")));
+            Assert.Contains(typeof(Uri).FullName ?? nameof(Uri), conversionException.Message);
         }
     }
 }
