@@ -6,7 +6,7 @@ namespace RubyCore
 {
     /// <summary>
     /// Ruby 对象迭代器
-    /// <para>通过 to_a 取得快照后按索引遍历，避免在 CLR 迭代过程中依赖 Ruby block 回调</para>
+    /// <para>优先通过 Ruby C API 调用 <c>each</c> 取得快照，再按索引遍历</para>
     /// </summary>
     public class RbIterator : IEnumerator<RbObject>
     {
@@ -22,7 +22,14 @@ namespace RubyCore
         {
             if (obj is null) throw new ArgumentNullException(nameof(obj));
 
-            if (obj.RespondTo("to_a"))
+            if (Runtime.HasBlockCall && obj.RespondTo("each"))
+            {
+                var array = Runtime.rb_each_to_array_protect(obj.Ref, out int state);
+                if (state != 0) RbException.CatchThrowToCLR();
+
+                _array = array.Obj;
+            }
+            else if (obj.RespondTo("to_a"))
             {
                 _array = obj.InvokeMethod("to_a");
             }

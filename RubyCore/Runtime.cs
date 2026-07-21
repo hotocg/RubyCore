@@ -441,6 +441,29 @@ namespace RubyCore
             }
         }
 
+        /// <summary>
+        /// 当前 Ruby API DLL 是否导出 rb_block_call
+        /// </summary>
+        internal static bool HasBlockCall => Delegates.rb_block_call != null;
+
+        /// <summary>
+        /// 使用 Ruby C API 调用 each，并将 yield 的对象收集为数组
+        /// </summary>
+        internal static VALUE rb_each_to_array_protect(VALUE obj, out int state)
+        {
+            var data = new EachProtectData(obj);
+            var handle = GCHandle.Alloc(data);
+
+            try
+            {
+                return rb_protect(EachProtectFunc, new VALUE(GCHandle.ToIntPtr(handle)), out state);
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
         #endregion
 
         #region 异常
@@ -565,6 +588,19 @@ namespace RubyCore
             return rb_funcallv(callData.Recv, callData.Mid, callData.Args);
         };
 
+        private static readonly Delegates.Delegate_rb_protect_func EachProtectFunc = data => {
+            var handle = GCHandle.FromIntPtr(data.Pointer);
+            var eachData = (EachProtectData)handle.Target;
+            eachData.Array = rb_ary_new();
+            Delegates.rb_block_call(eachData.Recv, rb_intern("each"), 0, IntPtr.Zero, EachBlockFunc, eachData.Array);
+            return eachData.Array;
+        };
+
+        private static readonly Delegates.Delegate_rb_block_call_func EachBlockFunc = (yieldedArg, callbackArg, argc, argv, blockArg) => {
+            rb_ary_push(callbackArg, yieldedArg);
+            return RbTypeMap.Qnil.Ref;
+        };
+
         private sealed class FuncallProtectData
         {
             internal readonly VALUE Recv;
@@ -576,6 +612,17 @@ namespace RubyCore
                 Recv = recv;
                 Mid = mid;
                 Args = args;
+            }
+        }
+
+        private sealed class EachProtectData
+        {
+            internal readonly VALUE Recv;
+            internal VALUE Array;
+
+            internal EachProtectData(VALUE recv)
+            {
+                Recv = recv;
             }
         }
 
@@ -649,6 +696,7 @@ namespace RubyCore
                 rb_sym2id = WindowsLoader.GetFuncByName<Delegate_rb_sym2id>(nameof(rb_sym2id), _ApiDll);
                 rb_funcall = WindowsLoader.GetFuncByName<Delegate_rb_funcall>(nameof(rb_funcall), _ApiDll);
                 rb_funcallv = WindowsLoader.GetFuncByName<Delegate_rb_funcallv>(nameof(rb_funcallv), _ApiDll);
+                rb_block_call = WindowsLoader.TryGetFuncByName<Delegate_rb_block_call>(nameof(rb_block_call), _ApiDll);
                 #endregion
 
                 #region 异常
@@ -782,6 +830,11 @@ namespace RubyCore
             internal static Delegate_rb_funcall rb_funcall;
             internal delegate VALUE Delegate_rb_funcallv(VALUE recv, ID mid, int argc, IntPtr argv);
             internal static Delegate_rb_funcallv rb_funcallv;
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate VALUE Delegate_rb_block_call_func(VALUE yieldedArg, VALUE callbackArg, int argc, IntPtr argv, VALUE blockArg);
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate VALUE Delegate_rb_block_call(VALUE obj, ID mid, int argc, IntPtr argv, Delegate_rb_block_call_func blockFunc, VALUE data);
+            internal static Delegate_rb_block_call rb_block_call;
             #endregion
 
             #region 异常

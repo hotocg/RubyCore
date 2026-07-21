@@ -71,6 +71,19 @@ namespace RubyCore
             return Marshal.GetDelegateForFunctionPointer<T>(GetFunction(Load(DllPath), FuncName));
         }
 
+        /// <summary>
+        /// 尝试获取指定函数的委托
+        /// <para>用于兼容不同 Ruby 版本导出函数不完全一致的场景</para>
+        /// </summary>
+        internal static T TryGetFuncByName<T>(string funcName, string dllPath) where T : Delegate
+        {
+            var module = Load(dllPath);
+            var func = GetProcAddress(module, funcName);
+            if (func == IntPtr.Zero) return null;
+
+            return Marshal.GetDelegateForFunctionPointer<T>(func);
+        }
+
         internal static VALUE GetValueByName(string name, string dllPath)
         {
             var address = GetFunction(Load(dllPath), name);
