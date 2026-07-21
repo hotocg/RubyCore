@@ -8,14 +8,24 @@ namespace RubyCore
     /// </summary>
     public class RbHash : RbIterable
     {
+        /// <summary>
+        /// 使用已有 Ruby VALUE 创建哈希包装
+        /// </summary>
         public RbHash(VALUE refVal) : base(refVal)
         {
         }
 
+        /// <summary>
+        /// 创建空 Ruby Hash
+        /// </summary>
         public RbHash() : base(Runtime.rb_hash_new())
         {
         }
 
+        /// <summary>
+        /// 使用字典创建 Ruby Hash
+        /// <para>字典 key 会按原始 CLR 类型转换，例如 string key 会生成 Ruby 字符串 key</para>
+        /// </summary>
         public RbHash(IDictionary dictionary) : this()
         {
             foreach (DictionaryEntry item in dictionary)
@@ -24,12 +34,17 @@ namespace RubyCore
             }
         }
 
-        public RbHash(object obj) : this()
+        /// <summary>
+        /// 使用对象公开属性创建 Ruby Hash
+        /// <para>默认生成 Symbol key，适合 Ruby API 常见的 options hash；传入 false 可生成字符串 key</para>
+        /// </summary>
+        public RbHash(object obj, bool symbolKey = true) : this()
         {
             var objType = obj.GetType();
             foreach (var prop in objType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                SetItem(prop.Name, prop.GetValue(obj));
+                var key = symbolKey ? (object)new RbSymbol(prop.Name) : prop.Name;
+                SetItem(key, prop.GetValue(obj));
             }
         }
 

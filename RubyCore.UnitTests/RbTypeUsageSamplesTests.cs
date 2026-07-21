@@ -552,7 +552,7 @@ end
             Assert.Contains("Tom", values);
             Assert.Contains("18", values);
 
-            // IDictionary 和匿名对象都会被转换成 Ruby Hash；匿名对象属性名目前按字符串 key 写入
+            // IDictionary 按原始 key 类型写入；匿名对象属性名默认按 Symbol key 写入，适合 Ruby options hash
             var fromDictionary = new RbHash(new Dictionary<string, object>
             {
                 ["title"] = "Book",
@@ -565,10 +565,16 @@ end
                 enabled = true
             });
 
+            var fromObjectWithStringKey = new RbHash(new
+            {
+                source = "JsonLike"
+            }, false);
+
             Assert.Equal("Book", fromDictionary["title"].As<string>());
             Assert.Equal(2, fromDictionary["count"].As<int>());
-            Assert.Equal("Tool", fromObject["category"].As<string>());
-            Assert.True(fromObject["enabled"].As<bool>());
+            Assert.Equal("Tool", fromObject[new RbSymbol("category")].As<string>());
+            Assert.True(fromObject[new RbSymbol("enabled")].As<bool>());
+            Assert.Equal("JsonLike", fromObjectWithStringKey["source"].As<string>());
         }
 
         /// <summary>
@@ -654,8 +660,8 @@ end
             Assert.True(rubyList[2].IsNil);
             Assert.Equal(1, rubyHash["x"].As<int>());
             Assert.Equal("two", rubyHash["y"].As<string>());
-            Assert.Equal("sample", rubyObjectHash["title"].As<string>());
-            Assert.Equal(3, rubyObjectHash["count"].As<int>());
+            Assert.Equal("sample", rubyObjectHash[new RbSymbol("title")].As<string>());
+            Assert.Equal(3, rubyObjectHash[new RbSymbol("count")].As<int>());
 
             // 集合递归转换时，Ruby nil 会按元素目标类型转换为 null 或 default
             var rubyArrayWithNil = RbEngine.Exec("[1, nil, 3]");
