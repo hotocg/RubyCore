@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.CSharp.RuntimeBinder;
 
 namespace RubyCore.UnitTests
 {
@@ -185,6 +186,10 @@ end
             Assert.Equal("Alice:18", dynamicNamedArgs.As<string>());
             Assert.Equal("RubyCoreSampleUser::Address", dynamicNestedConstant.InvokeMethod("name").As<string>());
             Assert.Equal("CN", dynamicAssignedConstant.As<string>());
+
+            // 普通实例的小写成员不存在时不应该继续当常量查询，避免 rb_const_get 误用于普通对象
+            var missingMemberException = Assert.Throws<RuntimeBinderException>(() => dynamicUser.vpwidth);
+            Assert.Contains("vpwidth", missingMemberException.Message);
 
             // 泛型入口用于直接拿到期望的包装类型或 CLR 类型，改善静态类型提示
             var genericArray = RbEngine.Exec<RbArray>("[1, 2, 3]");

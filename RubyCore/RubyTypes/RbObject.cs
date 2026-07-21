@@ -378,9 +378,9 @@ namespace RubyCore
         /// </summary>
         public bool TryGetConstant(string name, out RbObject result)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            result = null;
+            if (string.IsNullOrWhiteSpace(name) || !IsRubyConstantName(name) || !CanReadConstant())
             {
-                result = null;
                 return false;
             }
 
@@ -389,12 +389,22 @@ namespace RubyCore
             if (state != 0)
             {
                 Runtime.rb_set_errinfo(RbTypeMap.Qnil.Ref);
-                result = null;
                 return false;
             }
 
             result = value.Obj;
             return true;
+        }
+
+        private bool CanReadConstant()
+        {
+            var className = Runtime.GetClassName(this.Ref);
+            return className == "Module" || className == "Class";
+        }
+
+        private static bool IsRubyConstantName(string name)
+        {
+            return !string.IsNullOrWhiteSpace(name) && char.IsUpper(name[0]);
         }
 
         /// <summary>
