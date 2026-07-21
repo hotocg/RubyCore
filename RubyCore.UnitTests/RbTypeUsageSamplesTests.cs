@@ -480,6 +480,27 @@ end
             Assert.Equal(new[] { 1, 20, 3, 4 }, managedArray);
             Assert.Equal(new List<int> { 1, 20, 3, 4 }, managedList);
 
+            var eachOnlyClassName = "RubyCoreEachOnlySample" + Guid.NewGuid().ToString("N");
+            RbEngine.Exec($@"
+                class {eachOnlyClassName}
+                  def each
+                    yield 5
+                    yield 6
+                    yield 7
+                  end
+                end
+            ");
+
+            // 普通 RbObject 只要响应 each，也可以直接被 C# foreach 遍历
+            var eachOnly = RbEngine.Exec($"{eachOnlyClassName}.new");
+            var eachOnlyValues = new List<int>();
+            foreach (var item in eachOnly)
+            {
+                eachOnlyValues.Add(item.As<int>());
+            }
+
+            Assert.Equal(new[] { 5, 6, 7 }, eachOnlyValues);
+
             // dynamic 索引读写会走 TryGetIndex/TrySetIndex
             dynamic dynamicArray = array;
             RbObject dynamicItem = dynamicArray[2];
@@ -487,6 +508,15 @@ end
 
             Assert.Equal(3, dynamicItem.As<int>());
             Assert.Equal(30, array[2].As<int>());
+
+            dynamic dynamicEachOnly = eachOnly;
+            var dynamicEachOnlyValues = new List<int>();
+            foreach (RbObject item in dynamicEachOnly)
+            {
+                dynamicEachOnlyValues.Add(item.As<int>());
+            }
+
+            Assert.Equal(new[] { 5, 6, 7 }, dynamicEachOnlyValues);
         }
 
         /// <summary>

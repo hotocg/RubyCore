@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -9,7 +11,7 @@ namespace RubyCore
     /// Ruby 对象包装
     /// <para>统一提供方法调用、索引访问、属性访问、动态调用和托管类型转换入口</para>
     /// </summary>
-    public class RbObject : DynamicObject
+    public class RbObject : DynamicObject, IEnumerable<RbObject>
     {
         /// <summary>
         /// Ruby VALUE 指针
@@ -218,6 +220,21 @@ namespace RubyCore
             rbArgs[normalArgCount] = namedArgs;
             return rbArgs;
         }
+        #endregion
+
+        #region 迭代
+        /// <summary>
+        /// 获取 Ruby 对象迭代器
+        /// <para>支持 C# <c>foreach</c> 直接遍历响应 <c>to_a</c> 或 <c>each</c> 的 Ruby 对象</para>
+        /// </summary>
+        public RbIterator GetEnumerator()
+        {
+            return new RbIterator(this);
+        }
+
+        IEnumerator<RbObject> IEnumerable<RbObject>.GetEnumerator() => GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         #endregion
 
         #region 索引访问

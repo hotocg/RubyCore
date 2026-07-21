@@ -1,24 +1,15 @@
-using System.Collections;
-using System.Collections.Generic;
-
 namespace RubyCore
 {
     /// <summary>
     /// Ruby 可迭代对象
     /// </summary>
-    public class RbIterable : RbObject, IEnumerable<RbObject>
+    public class RbIterable : RbObject
     {
+        /// <summary>
+        /// 使用已有 Ruby VALUE 创建可迭代对象包装
+        /// </summary>
         public RbIterable(VALUE refVal) : base(refVal)
         {
         }
-
-        public RbIterator GetEnumerator()
-        {
-            return new RbIterator(this);
-        }
-
-        IEnumerator<RbObject> IEnumerable<RbObject>.GetEnumerator() => GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
