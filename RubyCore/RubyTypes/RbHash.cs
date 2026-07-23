@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Dynamic;
 using System.Reflection;
 
 namespace RubyCore
@@ -72,7 +73,64 @@ namespace RubyCore
         public override bool HasKey(object key)
         {
             var rbKey = RbConverter.ToRubyValue(key);
-            return Runtime.rb_hash_has_key(this.Ref, rbKey.Ref).Obj.As<bool>();
+            return Runtime.rb_hash_has_key(this.Ref, rbKey.Ref).Pointer != RbTypeMap.Qfalse.Pointer;
+        }
+
+        /// <summary>
+        /// 通过动态成员读取 Symbol 或字符串键
+        /// <para>优先读取 Symbol 键，其次读取同名字符串键；键不存在时继续按 Ruby 方法处理</para>
+        /// </summary>
+        public override bool TryGetMember(GetMemberBinder binder, out object result)
+        {
+            using (var symbolKey = new RbSymbol(binder.Name))
+            {
+                if (HasKey(symbolKey))
+                {
+                    result = GetItem(symbolKey);
+                    return true;
+                }
+            }
+
+            using (var stringKey = new RbString(binder.Name))
+            {
+                if (HasKey(stringKey))
+                {
+                    result = GetItem(stringKey);
+                    return true;
+                }
+            }
+
+            return base.TryGetMember(binder, out result);
+        }
+
+        /// <summary>
+        /// 通过动态成员设置 Symbol 或字符串键
+        /// <para>保留已有键的类型，新键默认使用 Symbol</para>
+        /// </summary>
+        public override bool TrySetMember(SetMemberBinder binder, object value)
+        {
+            var rbValue = RbConverter.ToRubyValue(value);
+
+            using (var symbolKey = new RbSymbol(binder.Name))
+            {
+                if (HasKey(symbolKey))
+                {
+                    SetItem(symbolKey, rbValue);
+                    return true;
+                }
+
+                using (var stringKey = new RbString(binder.Name))
+                {
+                    if (HasKey(stringKey))
+                    {
+                        SetItem(stringKey, rbValue);
+                        return true;
+                    }
+                }
+
+                SetItem(symbolKey, rbValue);
+                return true;
+            }
         }
 
         /// <summary>

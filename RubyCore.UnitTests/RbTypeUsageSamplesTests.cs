@@ -576,6 +576,36 @@ end
             Assert.Equal("Tool", fromObject[new RbSymbol("category")].As<string>());
             Assert.True(fromObject[new RbSymbol("enabled")].As<bool>());
             Assert.Equal("JsonLike", fromObjectWithStringKey["source"].As<string>());
+
+            // RbHash 的动态成员优先映射 Symbol 键，也支持读取和更新已有字符串键
+            dynamic dynamicObject = fromObject;
+            RbObject dynamicCategory = dynamicObject.category;
+            dynamicObject.category = "Hardware";
+            dynamicObject.retries = 3;
+
+            Assert.Equal("Tool", dynamicCategory.As<string>());
+            Assert.Equal("Hardware", fromObject[new RbSymbol("category")].As<string>());
+            Assert.Equal(3, fromObject[new RbSymbol("retries")].As<int>());
+
+            dynamic dynamicStringKeyObject = fromObjectWithStringKey;
+            RbObject dynamicSource = dynamicStringKeyObject.source;
+            dynamicStringKeyObject.source = "Updated";
+
+            Assert.Equal("JsonLike", dynamicSource.As<string>());
+            Assert.Equal("Updated", fromObjectWithStringKey["source"].As<string>());
+            Assert.False(fromObjectWithStringKey.HasKey(new RbSymbol("source")));
+
+            var duplicateKeyHash = new RbHash();
+            duplicateKeyHash["mode"] = new RbString("string");
+            duplicateKeyHash[new RbSymbol("mode")] = new RbString("symbol");
+            dynamic dynamicDuplicateKeyHash = duplicateKeyHash;
+            RbObject dynamicMode = dynamicDuplicateKeyHash.mode;
+
+            Assert.Equal("symbol", dynamicMode.As<string>());
+
+            // 不存在同名键时仍可按属性形式调用 Ruby 无参方法
+            RbObject dynamicLength = dynamicObject.length;
+            Assert.Equal(3, dynamicLength.As<int>());
         }
 
         /// <summary>

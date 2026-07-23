@@ -59,6 +59,9 @@ namespace RubyCore.Test
                 Console.WriteLine(((dynamic)Json).generate(new RbArray(1, "2")));
                 //var requireResult = RbEngine.Require("json");
 
+                dynamic hash = new RbHash(new { name = "Tom" });
+                Console.WriteLine(hash.name);
+
                 var set = new RbSet();
                 set.Add("a");
                 set.Add(1);
