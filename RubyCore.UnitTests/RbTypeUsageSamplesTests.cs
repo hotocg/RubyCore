@@ -458,6 +458,37 @@ end
         }
 
         /// <summary>
+        /// RespondTo 使用 Ruby C API 判断真实方法和动态响应方法
+        /// <para>覆盖 respond_to_missing? 语义以及其中 Ruby 异常到 CLR 异常的安全转换</para>
+        /// </summary>
+        [RubyRuntimeFact]
+        public void RbObject_RespondTo_SupportsRespondToMissingAndProtectsRubyExceptions()
+        {
+            EnsureRuby();
+
+            var probe = RbEngine.Exec(@"
+(Class.new do
+  def known_method
+  end
+
+  def respond_to_missing?(name, include_private = false)
+    return true if name == :virtual_method
+    raise 'respond_to_missing failure' if name == :explosive_method
+    super
+  end
+end).new
+");
+
+            Assert.True(probe.RespondTo("known_method"));
+            Assert.True(probe.RespondTo("virtual_method"));
+            Assert.False(probe.RespondTo("missing_method"));
+            Assert.Throws<ArgumentNullException>(() => probe.RespondTo(null!));
+
+            var exception = Assert.Throws<Exception>(() => probe.RespondTo("explosive_method"));
+            Assert.Contains("respond_to_missing failure", exception.Message);
+        }
+
+        /// <summary>
         /// Ruby 数组和可迭代对象的使用
         /// <para>覆盖 RbArray 构造、Add、索引读写、LINQ/foreach 读取以及转换为 CLR 数组和 List</para>
         /// </summary>

@@ -387,7 +387,12 @@ namespace RubyCore
         /// </summary>
         public bool RespondTo(string name)
         {
-            return InvokePredicate("respond_to", name);
+            if (name is null) throw new ArgumentNullException(nameof(name));
+
+            var result = Runtime.rb_respond_to_protect(this.Ref, Runtime.rb_intern(name), out int state);
+            if (state != 0) RbException.CatchThrowToCLR();
+
+            return result;
         }
 
         /// <summary>

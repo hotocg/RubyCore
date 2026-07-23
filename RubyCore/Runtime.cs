@@ -380,6 +380,26 @@ namespace RubyCore
         //internal static string rb_obj_classname(VALUE obj) => Delegates.rb_obj_classname(obj);
 
         /// <summary>
+        /// 以保护模式判断对象是否响应指定方法
+        /// <para>rb_respond_to 可能调用 respond_to_missing?，因此仍需通过 rb_protect 隔离 Ruby 异常</para>
+        /// </summary>
+        internal static bool rb_respond_to_protect(VALUE obj, ID id, out int state)
+        {
+            var data = new RespondToProtectData(obj, id);
+            var handle = GCHandle.Alloc(data);
+
+            try
+            {
+                rb_protect(RespondToProtectFunc, new VALUE(GCHandle.ToIntPtr(handle)), out state);
+                return data.Result != 0;
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        /// <summary>
         /// 获取 Ruby 对象哈希值
         /// </summary>
         internal static VALUE rb_hash(VALUE obj) => Delegates.rb_hash(obj);
@@ -640,18 +660,30 @@ namespace RubyCore
 
         #region 保护回调
 
+        /// <summary>
+        /// 在 rb_protect 中执行 rb_require
+        /// <para>data 是待加载功能名称对应的 Ruby 字符串</para>
+        /// </summary>
         private static readonly Delegates.Delegate_rb_protect_func RequireProtectFunc = data => {
             var feature = data;
             var featurePtr = rb_string_value_cstr(ref feature);
             return rb_require(featurePtr);
         };
 
+        /// <summary>
+        /// 在 rb_protect 中读取 Ruby 常量
+        /// <para>data 数组依次保存模块或类、常量名 Symbol</para>
+        /// </summary>
         private static readonly Delegates.Delegate_rb_protect_func ConstGetProtectFunc = data => {
             var klass = rb_ary_entry(data, 0);
             var name = rb_ary_entry(data, 1);
             return rb_const_get(klass, rb_sym2id(name));
         };
 
+        /// <summary>
+        /// 在 rb_protect 中设置 Ruby 常量
+        /// <para>data 数组依次保存模块或类、常量名 Symbol、常量值</para>
+        /// </summary>
         private static readonly Delegates.Delegate_rb_protect_func ConstSetProtectFunc = data => {
             var klass = rb_ary_entry(data, 0);
             var name = rb_ary_entry(data, 1);
@@ -660,12 +692,31 @@ namespace RubyCore
             return value;
         };
 
+        /// <summary>
+        /// 在 rb_protect 中执行带参数的 Ruby 方法
+        /// <para>data 保存指向 FuncallProtectData 的 GCHandle</para>
+        /// </summary>
         private static readonly Delegates.Delegate_rb_protect_func FuncallProtectFunc = data => {
             var handle = GCHandle.FromIntPtr(data.Pointer);
             var callData = (FuncallProtectData)handle.Target;
             return rb_funcallv(callData.Recv, callData.Mid, callData.Args);
         };
 
+        /// <summary>
+        /// 在 rb_protect 中判断 Ruby 对象是否响应指定方法
+        /// <para>data 保存指向 RespondToProtectData 的 GCHandle，判断结果写回参数载体</para>
+        /// </summary>
+        private static readonly Delegates.Delegate_rb_protect_func RespondToProtectFunc = data => {
+            var handle = GCHandle.FromIntPtr(data.Pointer);
+            var respondToData = (RespondToProtectData)handle.Target;
+            respondToData.Result = Delegates.rb_respond_to(respondToData.Recv, respondToData.Mid);
+            return respondToData.Recv;
+        };
+
+        /// <summary>
+        /// 在 rb_protect 中调用 each 并收集迭代结果
+        /// <para>data 保存指向 EachProtectData 的 GCHandle</para>
+        /// </summary>
         private static readonly Delegates.Delegate_rb_protect_func EachProtectFunc = data => {
             var handle = GCHandle.FromIntPtr(data.Pointer);
             var eachData = (EachProtectData)handle.Target;
@@ -674,17 +725,38 @@ namespace RubyCore
             return eachData.Array;
         };
 
+        /// <summary>
+        /// 接收 each 产生的值并追加到结果数组
+        /// <para>callbackArg 是 EachProtectFunc 创建的 Ruby 数组</para>
+        /// </summary>
         private static readonly Delegates.Delegate_rb_block_call_func EachBlockFunc = (yieldedArg, callbackArg, argc, argv, blockArg) => {
             rb_ary_push(callbackArg, yieldedArg);
             return RbTypeMap.Qnil.Ref;
         };
 
+        /// <summary>
+        /// 保存 rb_funcallv 保护调用所需的接收者、方法和参数
+        /// </summary>
         private sealed class FuncallProtectData
         {
+            /// <summary>
+            /// Ruby 方法接收者
+            /// </summary>
             internal readonly VALUE Recv;
+
+            /// <summary>
+            /// Ruby 方法 ID
+            /// </summary>
             internal readonly ID Mid;
+
+            /// <summary>
+            /// Ruby 方法参数
+            /// </summary>
             internal readonly VALUE[] Args;
 
+            /// <summary>
+            /// 创建 Ruby 方法保护调用参数
+            /// </summary>
             internal FuncallProtectData(VALUE recv, ID mid, VALUE[] args)
             {
                 Recv = recv;
@@ -693,11 +765,54 @@ namespace RubyCore
             }
         }
 
+        /// <summary>
+        /// 保存 rb_respond_to 保护调用的输入和结果
+        /// </summary>
+        private sealed class RespondToProtectData
+        {
+            /// <summary>
+            /// 待检查的 Ruby 对象
+            /// </summary>
+            internal readonly VALUE Recv;
+
+            /// <summary>
+            /// 待检查的 Ruby 方法 ID
+            /// </summary>
+            internal readonly ID Mid;
+
+            /// <summary>
+            /// rb_respond_to 返回的原生布尔值
+            /// </summary>
+            internal int Result;
+
+            /// <summary>
+            /// 创建 Ruby 方法响应检查参数
+            /// </summary>
+            internal RespondToProtectData(VALUE recv, ID mid)
+            {
+                Recv = recv;
+                Mid = mid;
+            }
+        }
+
+        /// <summary>
+        /// 保存 each 保护调用的迭代对象和结果数组
+        /// </summary>
         private sealed class EachProtectData
         {
+            /// <summary>
+            /// 待迭代的 Ruby 对象
+            /// </summary>
             internal readonly VALUE Recv;
+
+            /// <summary>
+            /// 收集迭代值的 Ruby 数组
+            /// </summary>
             internal VALUE Array;
 
+            /// <summary>
+            /// 创建 Ruby 迭代保护调用参数
+            /// </summary>
             internal EachProtectData(VALUE recv)
             {
                 Recv = recv;
@@ -745,6 +860,7 @@ namespace RubyCore
                 rb_obj_as_string = WindowsLoader.GetFuncByName<Delegate_rb_obj_as_string>(nameof(rb_obj_as_string), _ApiDll);
                 rb_obj_class = WindowsLoader.GetFuncByName<Delegate_rb_obj_class>(nameof(rb_obj_class), _ApiDll);
                 rb_obj_classname = WindowsLoader.GetFuncByName<Delegate_rb_obj_classname>(nameof(rb_obj_classname), _ApiDll);
+                rb_respond_to = WindowsLoader.GetFuncByName<Delegate_rb_respond_to>(nameof(rb_respond_to), _ApiDll);
                 rb_hash = WindowsLoader.GetFuncByName<Delegate_rb_hash>(nameof(rb_hash), _ApiDll);
                 #endregion
 
@@ -867,6 +983,9 @@ namespace RubyCore
             internal static Delegate_rb_obj_class rb_obj_class;
             internal delegate string Delegate_rb_obj_classname(VALUE obj);
             internal static Delegate_rb_obj_classname rb_obj_classname;
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate int Delegate_rb_respond_to(VALUE obj, ID id);
+            internal static Delegate_rb_respond_to rb_respond_to;
             internal delegate VALUE Delegate_rb_hash(VALUE obj);
             internal static Delegate_rb_hash rb_hash;
             #endregion
