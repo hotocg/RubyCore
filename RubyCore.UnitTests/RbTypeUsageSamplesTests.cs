@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Microsoft.CSharp.RuntimeBinder;
 
 namespace RubyCore.UnitTests
@@ -575,6 +576,33 @@ end
             Assert.Equal("Tool", fromObject[new RbSymbol("category")].As<string>());
             Assert.True(fromObject[new RbSymbol("enabled")].As<bool>());
             Assert.Equal("JsonLike", fromObjectWithStringKey["source"].As<string>());
+        }
+
+        /// <summary>
+        /// CLR 持有的 Ruby 对象在 Ruby GC 后仍然有效
+        /// <para>覆盖对象没有 Ruby 侧引用时的 VALUE 根注册，防止 GC 回收后继续调用失效地址</para>
+        /// </summary>
+        [RubyRuntimeFact]
+        public void RbObject_KeepsRubyValueAliveWhileClrWrapperIsAlive()
+        {
+            EnsureRuby();
+
+            var hash = CreateGcRootProbeHash();
+
+            for (var i = 0; i < 20; i++)
+            {
+                RbEngine.Exec("10000.times { Object.new }; GC.start if GC.respond_to?(:start)");
+            }
+
+            Assert.Equal(1, hash.InvokeMethod<int>("size"));
+            Assert.Equal("123", hash.GetItem<string>(new RbSymbol("name")));
+            GC.KeepAlive(hash);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static RbHash CreateGcRootProbeHash()
+        {
+            return new RbHash(new { name = "123" });
         }
 
         /// <summary>

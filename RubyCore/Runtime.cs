@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -101,11 +102,74 @@ namespace RubyCore
         {
             if (!IsInitialized) return;
 
+            ReleasePendingValueRoots();
             ruby_finalize();
             //GC.Collect();
             //GC.WaitForPendingFinalizers();
 
             IsInitialized = false;
+        }
+
+        #endregion
+
+        #region VALUE 生命周期
+
+        private static readonly ConcurrentQueue<IntPtr> PendingValueRootReleases = new ConcurrentQueue<IntPtr>();
+
+        /// <summary>
+        /// 注册由 CLR 包装对象持有的 Ruby VALUE
+        /// <para>返回值是稳定的 VALUE 存储地址，Ruby GC 压缩对象时会同步更新其中的值</para>
+        /// </summary>
+        internal static IntPtr RegisterValueRoot(VALUE value)
+        {
+            if (!IsInitialized) return IntPtr.Zero;
+
+            ReleasePendingValueRoots();
+
+            var address = Marshal.AllocHGlobal(IntPtr.Size);
+            Marshal.WriteIntPtr(address, value.Pointer);
+
+            try
+            {
+                rb_gc_register_address(address);
+                return address;
+            }
+            catch
+            {
+                Marshal.FreeHGlobal(address);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 延迟释放 Ruby VALUE 根
+        /// <para>CLR 终结器线程不能直接调用 Ruby C API，因此只在这里登记待释放地址</para>
+        /// </summary>
+        internal static void QueueValueRootRelease(IntPtr address)
+        {
+            if (address == IntPtr.Zero) return;
+
+            if (!IsInitialized)
+            {
+                Marshal.FreeHGlobal(address);
+                return;
+            }
+
+            PendingValueRootReleases.Enqueue(address);
+        }
+
+        /// <summary>
+        /// 在 Ruby 调用线程注销并释放待处理的 VALUE 根
+        /// </summary>
+        internal static void ReleasePendingValueRoots()
+        {
+            if (!IsInitialized) return;
+
+            while (PendingValueRootReleases.TryDequeue(out var address))
+            {
+                rb_gc_unregister_address(address);
+                Marshal.FreeHGlobal(address);
+            }
         }
 
         #endregion
@@ -319,6 +383,20 @@ namespace RubyCore
         /// 获取 Ruby 对象哈希值
         /// </summary>
         internal static VALUE rb_hash(VALUE obj) => Delegates.rb_hash(obj);
+
+        #endregion
+
+        #region GC
+
+        /// <summary>
+        /// 注册 Ruby GC 根地址
+        /// </summary>
+        internal static void rb_gc_register_address(IntPtr address) => Delegates.rb_gc_register_address(address);
+
+        /// <summary>
+        /// 注销 Ruby GC 根地址
+        /// </summary>
+        internal static void rb_gc_unregister_address(IntPtr address) => Delegates.rb_gc_unregister_address(address);
 
         #endregion
 
@@ -670,6 +748,11 @@ namespace RubyCore
                 rb_hash = WindowsLoader.GetFuncByName<Delegate_rb_hash>(nameof(rb_hash), _ApiDll);
                 #endregion
 
+                #region GC
+                rb_gc_register_address = WindowsLoader.GetFuncByName<Delegate_rb_gc_register_address>(nameof(rb_gc_register_address), _ApiDll);
+                rb_gc_unregister_address = WindowsLoader.GetFuncByName<Delegate_rb_gc_unregister_address>(nameof(rb_gc_unregister_address), _ApiDll);
+                #endregion
+
                 #region 字符串
                 rb_string_value_cstr = WindowsLoader.GetFuncByName<Delegate_rb_string_value_cstr>(nameof(rb_string_value_cstr), _ApiDll);
                 rb_str_new_cstr = WindowsLoader.GetFuncByName<Delegate_rb_str_new_cstr>(nameof(rb_str_new_cstr), _ApiDll);
@@ -786,6 +869,15 @@ namespace RubyCore
             internal static Delegate_rb_obj_classname rb_obj_classname;
             internal delegate VALUE Delegate_rb_hash(VALUE obj);
             internal static Delegate_rb_hash rb_hash;
+            #endregion
+
+            #region GC
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void Delegate_rb_gc_register_address(IntPtr address);
+            internal static Delegate_rb_gc_register_address rb_gc_register_address;
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void Delegate_rb_gc_unregister_address(IntPtr address);
+            internal static Delegate_rb_gc_unregister_address rb_gc_unregister_address;
             #endregion
 
             #region 字符串

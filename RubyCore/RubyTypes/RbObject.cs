@@ -4,24 +4,47 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace RubyCore
 {
     /// <summary>
     /// Ruby 对象包装
     /// <para>统一提供方法调用、索引访问、属性访问、动态调用和托管类型转换入口</para>
+    /// <para>包装存续期间自动保持 Ruby VALUE 有效，释放过程延迟到 Ruby 调用线程完成</para>
     /// </summary>
-    public class RbObject : DynamicObject, IEnumerable<RbObject>
+    public class RbObject : DynamicObject, IEnumerable<RbObject>, IDisposable
     {
+        private IntPtr _pointer;
+        private IntPtr _rootAddress;
+        private int _disposed;
+
         /// <summary>
         /// Ruby VALUE 指针
         /// </summary>
-        public IntPtr Pointer;
+        public IntPtr Pointer
+        {
+            get
+            {
+                ThrowIfDisposed();
+
+                var rootAddress = Interlocked.CompareExchange(ref _rootAddress, IntPtr.Zero, IntPtr.Zero);
+                return rootAddress == IntPtr.Zero ? _pointer : Marshal.ReadIntPtr(rootAddress);
+            }
+        }
 
         /// <summary>
         /// Ruby VALUE 结构包装
         /// </summary>
-        public VALUE Ref => new(Pointer);
+        public VALUE Ref
+        {
+            get
+            {
+                Runtime.ReleasePendingValueRoots();
+                return new VALUE(Pointer);
+            }
+        }
 
         /// <summary>
         /// 是否空指针
@@ -43,7 +66,8 @@ namespace RubyCore
         /// </summary>
         public RbObject(VALUE refVal)
         {
-            Pointer = refVal.Pointer;
+            _pointer = refVal.Pointer;
+            _rootAddress = Runtime.RegisterValueRoot(refVal);
         }
 
         /// <summary>
@@ -51,7 +75,41 @@ namespace RubyCore
         /// </summary>
         public RbObject(ID refVal)
         {
-            Pointer = refVal.Pointer;
+            _pointer = refVal.Pointer;
+        }
+
+        /// <summary>
+        /// 释放当前 CLR 包装对象持有的 Ruby GC 根
+        /// </summary>
+        public void Dispose()
+        {
+            ReleaseValueRoot();
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 将未显式释放的 Ruby GC 根交给运行时延迟处理
+        /// </summary>
+        ~RbObject()
+        {
+            ReleaseValueRoot();
+        }
+
+        private void ReleaseValueRoot()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+            var rootAddress = Interlocked.Exchange(ref _rootAddress, IntPtr.Zero);
+            Interlocked.Exchange(ref _pointer, IntPtr.Zero);
+            Runtime.QueueValueRootRelease(rootAddress);
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
         }
 
         /// <summary>
